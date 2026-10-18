@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # GCP Emulators for zero-credentials local mode
+  firestore-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: foodbridge-firestore-emulator
+    command: gcloud beta emulators firestore start --host-port=0.0.0.0:8080
+    ports:
+      - "8080:8080"
+    environment:
+      - FIRESTORE_PROJECT_ID=foodbridge-dev
+
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: foodbridge-pubsub-emulator
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=foodbridge-dev
+    ports:
+      - "8085:8085"
+
+  listing-service:
+    build:
+      context: .
+      dockerfile: services/listing-service/Dockerfile
+    container_name: foodbridge-listing-service
+    ports:
+      - "8001:8001"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8001
+      - EVENT_BUS_TYPE=pubsub
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - GCP_PROJECT_ID=foodbridge-dev
+      - MATCHING_SERVICE_URL=http://matching-service:8002
+    depends_on:
+      - firestore-emulator
+      - pubsub-emulator
+
+  matching-service:
+    build:
+      context: .
+      dockerfile: services/matching-service/Dockerfile
+    container_name: foodbridge-matching-service
+    ports:
+      - "8002:8002"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8002
+      - EVENT_BUS_TYPE=pubsub
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - GCP_PROJECT_ID=foodbridge-dev
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8003
+      - LOGISTICS_SERVICE_URL=http://logistics-service:8004
+    depends_on:
+      - firestore-emulator
+      - pubsub-emulator
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: foodbridge-notification-service
+    ports:
+      - "8003:8003"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8003
+      - EVENT_BUS_TYPE=pubsub
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - GCP_PROJECT_ID=foodbridge-dev
+      - SMS_PROVIDER=mock
+    depends_on:
+      - pubsub-emulator
+
+  logistics-service:
+    build:
+      context: .
+      dockerfile: services/logistics-service/Dockerfile
+    container_name: foodbridge-logistics-service
+    ports:
+      - "8004:8004"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8004
+      - EVENT_BUS_TYPE=pubsub
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - GCP_PROJECT_ID=foodbridge-dev
+    depends_on:
+      - pubsub-emulator
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: services/analytics-service/Dockerfile
+    container_name: foodbridge-analytics-service
+    ports:
+      - "8005:8005"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8005
+      - EVENT_BUS_TYPE=pubsub
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - GCP_PROJECT_ID=foodbridge-dev
+    depends_on:
+      - firestore-emulator
+      - pubsub-emulator
+
+  expiry-job:
+    build:
+      context: .
+      dockerfile: services/expiry-job/Dockerfile
+    container_name: foodbridge-expiry-job
+    ports:
+      - "8006:8006"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8006
+      - EVENT_BUS_TYPE=pubsub
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - GCP_PROJECT_ID=foodbridge-dev
+      - MATCHING_SERVICE_URL=http://matching-service:8002
+    depends_on:
+      - firestore-emulator
+      - pubsub-emulator
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: foodbridge-web
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8001
+      - VITE_MATCHING_URL=http://localhost:8002
+      - VITE_ANALYTICS_URL=http://localhost:8005
+    depends_on:
+      - listing-service
+      - matching-service
