@@ -1,0 +1,36 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isImageFile() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+
+    // Food donation photos
+    match /food-photos/{listingId}/{fileName} {
+      // Public or authenticated read for verifying food condition and displaying on cards
+      allow read: if true;
+      
+      // Upload allowed for authenticated users, constrained to valid images
+      allow write: if isAuthenticated() && isImageFile();
+    }
+
+    // Handover receipt and temperature verification photos
+    match /handover-photos/{handoverId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isImageFile();
+    }
+
+    // Generated CSR monthly impact certificate PDFs
+    match /certificates/{donorId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if request.auth.token.role == 'admin';
+    }
+  }
+}

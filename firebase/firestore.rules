@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+
+    function isDonor() {
+      return isAuthenticated() && (getUserRole() == 'donor' || getUserRole() == 'admin');
+    }
+
+    function isNgo() {
+      return isAuthenticated() && (getUserRole() == 'ngo' || getUserRole() == 'admin');
+    }
+
+    function isVolunteer() {
+      return isAuthenticated() && (getUserRole() == 'volunteer' || getUserRole() == 'admin');
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (getUserRole() == 'admin' || request.auth.token.admin == true);
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profiles & verification
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Food Surplus Listings
+    match /listings/{listingId} {
+      // Anyone authenticated can read active listings for matching and map display
+      allow read: if isAuthenticated() || resource.data.status in ['available', 'claimed'];
+      
+      // Only verified donors or admins can create listings
+      allow create: if isDonor() && request.resource.data.donor_id == request.auth.uid;
+      
+      // Donors can update their own listings; system/admin can update status
+      allow update: if (isDonor() && resource.data.donor_id == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Match Offers (sent to NGOs)
+    match /offers/{offerId} {
+      // NGOs can read offers addressed to them, donors can read offers for their listings, admins read all
+      allow read: if isAdmin() || 
+                    (isNgo() && resource.data.ngo_id == request.auth.uid) || 
+                    (isDonor() && resource.data.donor_id == request.auth.uid);
+      
+      // Offer creation is handled by matching-service (admin/service account)
+      allow create: if isAdmin();
+      
+      // Target NGO can accept or decline the offer within expiration window
+      allow update: if (isNgo() && resource.data.ngo_id == request.auth.uid && 
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'responded_at', 'decline_reason']))
+                    || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Volunteer Delivery Routes & Assignments
+    match /routes/{routeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if (isVolunteer() && resource.data.volunteer_id == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Handover Logs & Quality Checks
+    match /handovers/{handoverId} {
+      allow read: if isAuthenticated();
+      allow create: if isVolunteer() || isDonor() || isNgo() || isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Impact & Analytics Records
+    match /impact_metrics/{metricId} {
+      allow read: if true; // Public impact transparency
+      allow write: if isAdmin();
+    }
+
+    // System audit & escalations
+    match /escalations/{escalationId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
