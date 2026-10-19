@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foodbridge-shared"
+version = "0.1.0"
+description = "Shared core logic, models, geo algorithms, spoilage rules, and event bus for FoodBridge"
+authors = [{ name = "FoodBridge Cloud Engineering Team" }]
+dependencies = [
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    "python-dateutil>=2.8.2",
+    "requests>=2.31.0"
+]
+readme = "README.md"
+requires-python = ">=3.11"
