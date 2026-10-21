@@ -1,0 +1,1 @@
+"""FoodBridge Analytics Service"""
