@@ -1,0 +1,12 @@
+# FoodBridge Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your GCP environment details.
+
+project_id               = "your-gcp-project-id"
+region                   = "asia-south1"
+environment              = "prod"
+container_image_tag      = "v1.0.0"
+
+# Optional Cloud Secrets (Mock fallbacks activate automatically if left blank)
+gemini_api_key           = "AIzaSy..."
+fcm_server_key           = "AAAA..."
+alert_notification_email = "devops-alerts@foodbridge.org"
