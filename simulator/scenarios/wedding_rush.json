@@ -1,0 +1,77 @@
+{
+  "scenario_name": "wedding_rush",
+  "description": "Peak late-evening wedding banquet surplus rush across Palace Grounds and luxury hotel banquets in Bangalore.",
+  "speed_multiplier": 5,
+  "events": [
+    {
+      "delay_seconds": 1,
+      "event_type": "post_listing",
+      "data": {
+        "title": "Palace Grounds Banquet: Royal Dum Biryani & Mirchi Ka Salan",
+        "description": "Surplus from 800-guest wedding reception. Kept in insulated thermal food containers above 65°C.",
+        "category": "cooked_meals",
+        "storage_condition": "hot_hold",
+        "dietary_type": "veg",
+        "quantity_kg": 45.0,
+        "portions": 130,
+        "prepared_minutes_ago": 30,
+        "location": {
+          "latitude": 13.0033,
+          "longitude": 77.5891,
+          "address": "Sheesh Mahal, Palace Grounds, Bangalore"
+        }
+      }
+    },
+    {
+      "delay_seconds": 3,
+      "event_type": "post_listing",
+      "data": {
+        "title": "Grand Ballroom Wedding: Paneer Tikka Masala & Kulchas",
+        "description": "Hot holding chafing dish surplus, prepared 40 minutes ago.",
+        "category": "cooked_meals",
+        "storage_condition": "hot_hold",
+        "dietary_type": "veg",
+        "quantity_kg": 35.0,
+        "portions": 100,
+        "prepared_minutes_ago": 40,
+        "location": {
+          "latitude": 12.9716,
+          "longitude": 77.5946,
+          "address": "Taj West End, Race Course Road"
+        }
+      }
+    },
+    {
+      "delay_seconds": 5,
+      "event_type": "simulate_ngo_response",
+      "target_ngo": "ngo_robin_hood",
+      "action": "accept",
+      "notes": "Robin Hood Army Indiranagar accepted Royal Dum Biryani"
+    },
+    {
+      "delay_seconds": 7,
+      "event_type": "post_listing",
+      "data": {
+        "title": "Assorted Indian Wedding Desserts: Gulab Jamun & Rasmalai",
+        "description": "Chilled dessert course banquet surplus.",
+        "category": "desserts",
+        "storage_condition": "chilled",
+        "dietary_type": "veg",
+        "quantity_kg": 20.0,
+        "portions": 75,
+        "prepared_minutes_ago": 60,
+        "location": {
+          "latitude": 12.9780,
+          "longitude": 77.6400,
+          "address": "Leela Palace Banquet Hall"
+        }
+      }
+    },
+    {
+      "delay_seconds": 9,
+      "event_type": "simulate_handover",
+      "temperature_celsius": 67.5,
+      "notes": "Verified food temperature 67.5°C in thermal holding container."
+    }
+  ]
+}

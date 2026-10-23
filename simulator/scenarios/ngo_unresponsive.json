@@ -1,0 +1,45 @@
+{
+  "scenario_name": "ngo_unresponsive",
+  "description": "Simulates unresponsive or declining recipients triggering cascading escalation to next rank and radius expansion.",
+  "speed_multiplier": 5,
+  "events": [
+    {
+      "delay_seconds": 1,
+      "event_type": "post_listing",
+      "data": {
+        "title": "Catering Hall Feast: Mixed Vegetable Korma & Rice",
+        "description": "Surplus needing rapid redistribution.",
+        "category": "cooked_meals",
+        "storage_condition": "hot_hold",
+        "dietary_type": "veg",
+        "quantity_kg": 30.0,
+        "portions": 90,
+        "prepared_minutes_ago": 60,
+        "location": {
+          "latitude": 12.9716,
+          "longitude": 77.5946,
+          "address": "MG Road"
+        }
+      }
+    },
+    {
+      "delay_seconds": 3,
+      "event_type": "simulate_ngo_response",
+      "target_ngo": "ngo_robin_hood",
+      "action": "decline",
+      "reason": "Vehicle fleet currently engaged in flood relief distribution"
+    },
+    {
+      "delay_seconds": 5,
+      "event_type": "verify_escalation",
+      "expected_next_rank": 2,
+      "expected_ngo": "ngo_koramangala"
+    },
+    {
+      "delay_seconds": 7,
+      "event_type": "simulate_ngo_response",
+      "target_ngo": "ngo_koramangala",
+      "action": "accept"
+    }
+  ]
+}

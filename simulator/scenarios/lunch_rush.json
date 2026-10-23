@@ -1,0 +1,51 @@
+{
+  "scenario_name": "lunch_rush",
+  "description": "Afternoon corporate tech park cafeteria surplus across Electronic City and Whitefield.",
+  "speed_multiplier": 5,
+  "events": [
+    {
+      "delay_seconds": 1,
+      "event_type": "post_listing",
+      "data": {
+        "title": "Tech Park Cafeteria: Dal Tadka, Jeera Rice & Phulkas",
+        "description": "Lunch hour surplus from corporate cafeteria, ambient covered.",
+        "category": "cooked_meals",
+        "storage_condition": "ambient",
+        "dietary_type": "veg",
+        "quantity_kg": 28.0,
+        "portions": 80,
+        "prepared_minutes_ago": 35,
+        "location": {
+          "latitude": 12.8399,
+          "longitude": 77.6770,
+          "address": "Infosys Campus, Electronic City"
+        }
+      }
+    },
+    {
+      "delay_seconds": 3,
+      "event_type": "post_listing",
+      "data": {
+        "title": "Artisan Sandwiches & Sub Rolls",
+        "description": "Sealed packaged fresh sandwiches from tech summit luncheon.",
+        "category": "bakery_bread",
+        "storage_condition": "ambient",
+        "dietary_type": "veg",
+        "quantity_kg": 14.0,
+        "portions": 45,
+        "prepared_minutes_ago": 50,
+        "location": {
+          "latitude": 12.9856,
+          "longitude": 77.7315,
+          "address": "ITPL Main Building, Whitefield"
+        }
+      }
+    },
+    {
+      "delay_seconds": 5,
+      "event_type": "simulate_ngo_response",
+      "target_ngo": "ngo_koramangala",
+      "action": "accept"
+    }
+  ]
+}
