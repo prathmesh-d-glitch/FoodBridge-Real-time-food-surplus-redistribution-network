@@ -1,0 +1,43 @@
+{
+  "app_name": "फूडब्रिज (FoodBridge)",
+  "tagline": "वास्तविक समय में अतिरिक्त भोजन पुनर्वितरण नेटवर्क",
+  "nav": {
+    "donor": "दाता (Donor)",
+    "ngo": "एनजीओ फीड (NGO)",
+    "volunteer": "स्वयंसेवक (Volunteer)",
+    "map": "लाइव मैप (Map)",
+    "impact": "प्रभाव (Impact)",
+    "admin": "प्रशासक (Admin)",
+    "post_surplus": "भोजन दान करें"
+  },
+  "roles": {
+    "donor": "खाद्य दाता / कैटरर",
+    "ngo": "एनजीओ आश्रय",
+    "volunteer": "स्वयंसेवक चालक",
+    "admin": "सिस्टम प्रशासक"
+  },
+  "dashboard": {
+    "active_listings": "सक्रिय अतिरिक्त भोजन सूची",
+    "freshness_status": "ताजगी की समय सीमा",
+    "portions": "भोजन मात्रा (थाली)",
+    "safe_until": "सुरक्षित उपभोग समय",
+    "accept_offer": "स्वीकार करें",
+    "decline_offer": "अस्वीकार करें",
+    "verify_handover": "हस्तांतरण सत्यापित करें",
+    "download_certificate": "सीएसआर प्रभाव प्रमाण पत्र डाउनलोड करें (PDF)",
+    "ai_analysis": "जेमिनी एआई भोजन निरीक्षण",
+    "match_score": "समग्र मिलान स्कोर",
+    "time_feasibility": "समय व्यवहार्यता",
+    "proximity": "दूरी / निकटता",
+    "capacity_fit": "भंडारण क्षमता",
+    "dietary_match": "आहार अनुकूलता",
+    "reliability": "विश्वसनीयता",
+    "need_urgency": "तात्कालिकता"
+  },
+  "impact": {
+    "meals_saved": "बचाया गया भोजन (थाली)",
+    "kg_diverted": "कुल भोजन (किलो)",
+    "co2e_avoided": "कम हुआ CO2e (किलो)",
+    "deliveries": "पूर्ण किए गए वितरण"
+  }
+}

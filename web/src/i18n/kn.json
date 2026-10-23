@@ -1,0 +1,43 @@
+{
+  "app_name": "ಫುಡ್‌ಬ್ರಿಡ್ಜ್ (FoodBridge)",
+  "tagline": "ನೈಜ ಸಮಯದಲ್ಲಿ ಆಹಾರ ಮರುಹಂಚಿಕೆ ಜಾಲ",
+  "nav": {
+    "donor": "ದಾನಿ (Donor)",
+    "ngo": "ಎನ್‌ಜಿಒ ಫೀಡ್ (NGO)",
+    "volunteer": "ಸ್ವಯಂಸೇವಕ (Volunteer)",
+    "map": "ಲೈವ್ ನಕ್ಷೆ (Map)",
+    "impact": "ಪ್ರಭಾವ (Impact)",
+    "admin": "ನಿರ್ವಾಹಕ (Admin)",
+    "post_surplus": "ಆಹಾರ ದಾನ ಮಾಡಿ"
+  },
+  "roles": {
+    "donor": "ಆಹಾರ ದಾನಿ / ಕ್ಯಾಟರರ್",
+    "ngo": "ಎನ್‌ಜಿಒ ಆಶ್ರಯ",
+    "volunteer": "ಸ್ವಯಂಸೇವಕ ಚಾಲಕ",
+    "admin": "ವ್ಯವಸ್ಥಾಪಕ"
+  },
+  "dashboard": {
+    "active_listings": "ಸಕ್ರಿಯ ಹೆಚ್ಚುವರಿ ಆಹಾರ ಪಟ್ಟಿ",
+    "freshness_status": "ತಾಜಾತನದ ಸಮಯ",
+    "portions": "ಊಟದ ಪ್ರಮಾಣ (ಊಟಗಳು)",
+    "safe_until": "ಸುರಕ್ಷಿತ ಸಮಯದ ಮಿತಿ",
+    "accept_offer": "ಒಪ್ಪಿಕೊಳ್ಳಿ",
+    "decline_offer": "ತಿರಸ್ಕರಿಸಿ",
+    "verify_handover": "ಹಸ್ತಾಂತರ ಪರಿಶೀಲಿಸಿ",
+    "download_certificate": "ಸಿಎಸ್‌ಆರ್ ಪ್ರಮಾಣಪತ್ರ ಡೌನ್‌ಲೋಡ್ (PDF)",
+    "ai_analysis": "ಜೆಮಿನಿ ಎಐ ಆಹಾರ ತಪಾಸಣೆ",
+    "match_score": "ಹೊಂದಾಣಿಕೆಯ ಸ್ಕೋರ್",
+    "time_feasibility": "ಸಮಯದ ಕಾರ್ಯಸಾಧ್ಯತೆ",
+    "proximity": "ಸಾಮೀಪ್ಯ",
+    "capacity_fit": "ಸಾಮರ್ಥ್ಯ ಹೊಂದಾಣಿಕೆ",
+    "dietary_match": "ಆಹಾರ ಹೊಂದಾಣಿಕೆ",
+    "reliability": "ವಿಶ್ವಾಸಾರ್ಹತೆ",
+    "need_urgency": "ಅಗತ್ಯತೆ"
+  },
+  "impact": {
+    "meals_saved": "ಉಳಿಸಿದ ಊಟಗಳು",
+    "kg_diverted": "ಉಳಿಸಿದ ಆಹಾರ (ಕೆಜಿ)",
+    "co2e_avoided": "ತಡೆದ ಇಂಗಾಲದ ಹೊರಸೂಸುವಿಕೆ (ಕೆಜಿ)",
+    "deliveries": "ಪೂರ್ಣಗೊಂಡ ವಿತರಣೆಗಳು"
+  }
+}

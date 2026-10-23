@@ -1,0 +1,43 @@
+{
+  "app_name": "FoodBridge",
+  "tagline": "Real-Time Food Surplus Redistribution",
+  "nav": {
+    "donor": "Donor",
+    "ngo": "NGO Feed",
+    "volunteer": "Volunteer",
+    "map": "Live Map",
+    "impact": "Impact",
+    "admin": "Admin",
+    "post_surplus": "Post Surplus"
+  },
+  "roles": {
+    "donor": "Donor / Caterer",
+    "ngo": "NGO Shelter",
+    "volunteer": "Volunteer Driver",
+    "admin": "System Admin"
+  },
+  "dashboard": {
+    "active_listings": "Active Surplus Donations",
+    "freshness_status": "Freshness Window",
+    "portions": "Portions",
+    "safe_until": "Safe Until",
+    "accept_offer": "Accept Offer",
+    "decline_offer": "Decline",
+    "verify_handover": "Verify Handover",
+    "download_certificate": "Download CSR Impact Certificate (PDF)",
+    "ai_analysis": "Gemini AI Food Inspection",
+    "match_score": "Composite Match Score",
+    "time_feasibility": "Time Feasibility",
+    "proximity": "Proximity",
+    "capacity_fit": "Capacity Fit",
+    "dietary_match": "Dietary Match",
+    "reliability": "Reliability",
+    "need_urgency": "Urgency"
+  },
+  "impact": {
+    "meals_saved": "Meals Saved",
+    "kg_diverted": "Kg Food Diverted",
+    "co2e_avoided": "Kg CO2e Avoided",
+    "deliveries": "Completed Rescues"
+  }
+}
