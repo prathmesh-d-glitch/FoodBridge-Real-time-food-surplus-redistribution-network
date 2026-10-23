@@ -1,0 +1,96 @@
+name: FoodBridge Production Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target Environment"
+        required: true
+        default: "prod"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'foodbridge-prod' }}
+  GCP_REGION: "asia-south1"
+  REPOSITORY: "foodbridge"
+
+jobs:
+  infrastructure-and-services:
+    name: Terraform Apply & Container Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker Authentication
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Terraform Apply
+        working-directory: infra/terraform
+        env:
+          TF_VAR_project_id: ${{ env.GCP_PROJECT_ID }}
+          TF_VAR_region: ${{ env.GCP_REGION }}
+          TF_VAR_environment: "prod"
+          TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          TF_VAR_fcm_server_key: ${{ secrets.FCM_SERVER_KEY }}
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Build and Push Microservices
+        run: |
+          REGISTRY="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY }}"
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+
+          SERVICES=("listing-service" "matching-service" "notification-service" "logistics-service" "analytics-service" "expiry-job")
+
+          for SERVICE in "${SERVICES[@]}"; do
+            echo "=========================================="
+            echo "Building and Pushing: $SERVICE"
+            echo "=========================================="
+            docker build -t "$REGISTRY/$SERVICE:$COMMIT_SHA" -t "$REGISTRY/$SERVICE:latest" -f services/$SERVICE/Dockerfile .
+            docker push "$REGISTRY/$SERVICE:$COMMIT_SHA"
+            docker push "$REGISTRY/$SERVICE:latest"
+
+            echo "Deploying $SERVICE to Cloud Run..."
+            gcloud run deploy "foodbridge-$SERVICE" \
+              --image "$REGISTRY/$SERVICE:$COMMIT_SHA" \
+              --region "${{ env.GCP_REGION }}" \
+              --platform managed \
+              --allow-unauthenticated \
+              --quiet
+          done
+
+      - name: Build and Deploy Frontend PWA
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+          # Deploying to Firebase Hosting or Google Cloud Storage Bucket for CDN distribution
+          if command -v firebase &> /dev/null; then
+            firebase deploy --only hosting --token "${{ secrets.FIREBASE_TOKEN }}"
+          else
+            echo "Web distribution build generated in web/dist"
+          fi
