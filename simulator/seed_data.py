@@ -1,9 +1,13 @@
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 root_dir = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(root_dir / "services" / "shared"))
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+if str(root_dir / "services" / "shared") not in sys.path:
+    sys.path.insert(0, str(root_dir / "services" / "shared"))
 
 from shared.firestore_client import get_firestore_client
 from shared.models import (
@@ -11,6 +15,8 @@ from shared.models import (
     FoodCategory,
     GeoPoint,
     ListingStatus,
+    OfferStatus,
+    RouteStatus,
     StorageCondition,
     UserProfile,
     UserRole,
@@ -19,83 +25,72 @@ from shared.models import (
 
 
 def seed_database():
-    """Seeds verified NGOs, donors, volunteers, active listings, and baseline impact records."""
     db = get_firestore_client()
     now = datetime.now(timezone.utc)
 
-    # 1. Verified NGOs across Bangalore
+    # 1. Donors
+    donors = [
+        UserProfile(
+            uid="donor_taj_palace",
+            email="donor@gmail.com",
+            name="Taj Palace Luxury Catering",
+            role=UserRole.DONOR,
+            phone="+919876543210",
+            location=GeoPoint(latitude=12.9716, longitude=77.5946, address="MG Road, Bangalore"),
+            verification_status=VerificationStatus.VERIFIED,
+            fssai_license="11223344556677",
+        ),
+        UserProfile(
+            uid="donor_grand_banquet",
+            email="banquets@grandconvention.example",
+            name="Grand Convention & Banquets",
+            role=UserRole.DONOR,
+            phone="+919876543214",
+            location=GeoPoint(latitude=13.0033, longitude=77.5891, address="Palace Grounds Gate 4"),
+            verification_status=VerificationStatus.VERIFIED,
+            fssai_license="11229988776655",
+        ),
+    ]
+
+    for d in donors:
+        db.set_document("users", d.uid, d.model_dump(mode="json"))
+
+    # 2. NGOs
     ngos = [
         UserProfile(
             uid="ngo_robin_hood",
-            email="ops@robinhoodarmy.example",
+            email="ngo@gmail.com",
             name="Robin Hood Army Bangalore",
             role=UserRole.NGO,
             phone="+919876543211",
-            location=GeoPoint(latitude=12.9784, longitude=77.6408, address="100 Feet Road, Indiranagar"),
-            capacity_kg=250.0,
-            dietary_preferences=[DietaryType.ANY],
-            reliability_score=0.98,
+            location=GeoPoint(latitude=12.9784, longitude=77.6408, address="100ft Rd, Indiranagar"),
             verification_status=VerificationStatus.VERIFIED,
+            capacity_kg=250.0,
+            dietary_preferences=[DietaryType.VEG, DietaryType.NON_VEG],
+            reliability_score=0.96,
         ),
         UserProfile(
             uid="ngo_koramangala",
-            email="kitchen@kora.example",
+            email="kitchen@koramangala.org",
             name="Koramangala Community Kitchen",
             role=UserRole.NGO,
-            phone="+919876543214",
-            location=GeoPoint(latitude=12.9352, longitude=77.6245, address="80 Feet Road, Koramangala 4th Block"),
+            phone="+919876543215",
+            location=GeoPoint(latitude=12.9352, longitude=77.6245, address="80ft Rd, Koramangala"),
+            verification_status=VerificationStatus.VERIFIED,
             capacity_kg=150.0,
             dietary_preferences=[DietaryType.VEG],
-            reliability_score=0.93,
-            verification_status=VerificationStatus.VERIFIED,
-        ),
-        UserProfile(
-            uid="ngo_hasiru_dala",
-            email="help@hasirudala.example",
-            name="Hasiru Dala Feeding Centre",
-            role=UserRole.NGO,
-            phone="+919876543215",
-            location=GeoPoint(latitude=12.9634, longitude=77.5855, address="KR Market Shelter"),
-            capacity_kg=300.0,
-            dietary_preferences=[DietaryType.ANY],
-            reliability_score=0.95,
-            verification_status=VerificationStatus.VERIFIED,
+            reliability_score=0.91,
         ),
     ]
 
     for ngo in ngos:
         db.set_document("users", ngo.uid, ngo.model_dump(mode="json"))
 
-    # 2. Donors
-    donors = [
-        UserProfile(
-            uid="donor_taj_palace",
-            email="chef@tajpalace.example",
-            name="Taj Palace Luxury Catering",
-            role=UserRole.DONOR,
-            phone="+919876543210",
-            location=GeoPoint(latitude=12.9716, longitude=77.5946, address="MG Road, Bangalore"),
-            verification_status=VerificationStatus.VERIFIED,
-        ),
-        UserProfile(
-            uid="donor_grand_banquet",
-            email="manager@grandbanquet.example",
-            name="Grand Convention & Banquets",
-            role=UserRole.DONOR,
-            phone="+919876543216",
-            location=GeoPoint(latitude=13.0033, longitude=77.5891, address="Palace Grounds Gate 4"),
-            verification_status=VerificationStatus.VERIFIED,
-        ),
-    ]
-
-    for donor in donors:
-        db.set_document("users", donor.uid, donor.model_dump(mode="json"))
-
     # 3. Volunteers
     volunteers = [
         UserProfile(
             uid="vol_arun_kumar",
-            email="arun.k@volunteer.example",
+            email="volunteer@gmail.com",
             name="Arun Kumar",
             role=UserRole.VOLUNTEER,
             phone="+919876543212",
@@ -122,7 +117,7 @@ def seed_database():
             "portions": 120,
             "prepared_at": (now - timedelta(minutes=45)).isoformat(),
             "safe_until": (now + timedelta(hours=3, minutes=15)).isoformat(),
-            "location": {"latitude": 12.9716, "longitude": 77.5946, "address": "MG Road, Bangalore"},
+            "location": {"latitude": 12.9716, "longitude": 77.5946, "address": "Palace Grounds, MG Road, Bangalore"},
             "geohash": "tdr1vw",
             "photo_analysis": {
                 "food_type": "Cooked Catering Meals (Rice & Gravy)",
@@ -132,7 +127,7 @@ def seed_database():
                 "confidence": 0.95,
                 "source": "gemini",
             },
-            "status": ListingStatus.AVAILABLE.value,
+            "status": ListingStatus.OFFERED.value,
             "created_at": (now - timedelta(minutes=45)).isoformat(),
             "updated_at": (now - timedelta(minutes=45)).isoformat(),
         },
@@ -149,7 +144,7 @@ def seed_database():
             "portions": 55,
             "prepared_at": (now - timedelta(hours=2)).isoformat(),
             "safe_until": (now + timedelta(hours=22)).isoformat(),
-            "location": {"latitude": 13.0033, "longitude": 77.5891, "address": "Palace Grounds Gate 4"},
+            "location": {"latitude": 13.0033, "longitude": 77.5891, "address": "Palace Grounds Gate 4, Bengaluru"},
             "geohash": "tdr1w2",
             "photo_analysis": {
                 "food_type": "Bakery & Breads",
@@ -168,10 +163,125 @@ def seed_database():
     for l in listings:
         db.set_document("listings", l["id"], l)
 
-    # 5. Baseline impact records
-    from services.analytics_service.app.impact import ImpactCalculator
+    # 5. Active offer for ngo_robin_hood (ngo@gmail.com)
+    active_offer = {
+        "id": "off_seed_robin_hood_01",
+        "listing_id": "list_wedding_rush_1",
+        "donor_id": "donor_taj_palace",
+        "ngo_id": "ngo_robin_hood",
+        "ngo_name": "Robin Hood Army Bangalore",
+        "rank": 1,
+        "score": 0.91,
+        "score_breakdown": {
+            "time_feasibility": 0.95,
+            "proximity": 0.88,
+            "capacity_fit": 0.92,
+            "dietary_match": 1.0,
+            "reliability": 0.96,
+            "need_urgency": 0.85,
+            "total_score": 0.91,
+            "explanation": "High capacity fit (120 portions) within 4.5km radius and 2h45m safety margin.",
+        },
+        "status": OfferStatus.OFFERED.value,
+        "response_timeout_seconds": 600,
+        "offered_at": (now - timedelta(minutes=5)).isoformat(),
+        "expires_at": (now + timedelta(minutes=9, seconds=30)).isoformat(),
+    }
+    db.set_document("offers", active_offer["id"], active_offer)
+
+    # 6. Active volunteer route for vol_arun_kumar (volunteer@gmail.com)
+    volunteer_route = {
+        "id": "rt_opt_blr_01",
+        "volunteer_id": "vol_arun_kumar",
+        "volunteer_name": "Arun Kumar",
+        "stops": [
+            {
+                "stop_id": "stop_p1",
+                "stop_type": "pickup",
+                "listing_id": "list_wedding_rush_1",
+                "target_name": "Taj Palace Luxury Catering",
+                "location": {"latitude": 12.9716, "longitude": 77.5946},
+                "estimated_arrival": (now + timedelta(minutes=15)).isoformat(),
+                "deadline": (now + timedelta(minutes=90)).isoformat(),
+                "completed": False,
+            },
+            {
+                "stop_id": "stop_d1",
+                "stop_type": "delivery",
+                "listing_id": "list_wedding_rush_1",
+                "target_name": "Robin Hood Army Indiranagar",
+                "location": {"latitude": 12.9784, "longitude": 77.6408},
+                "estimated_arrival": (now + timedelta(minutes=45)).isoformat(),
+                "deadline": (now + timedelta(minutes=120)).isoformat(),
+                "completed": False,
+            },
+        ],
+        "total_distance_km": 6.8,
+        "estimated_duration_mins": 45.0,
+        "status": RouteStatus.ASSIGNED.value,
+    }
+    db.set_document("routes", volunteer_route["id"], volunteer_route)
+
+    # 7. Verification requests
+    verifications = [
+        {
+            "id": "req_01",
+            "name": "ITC Gardenia Banquets",
+            "type": "donor",
+            "fssai_license": "11223344556677",
+            "address": "Residency Road, Bangalore",
+            "status": "pending",
+            "submitted_at": (now - timedelta(hours=3)).isoformat(),
+        },
+        {
+            "id": "req_02",
+            "name": "Hasiru Dala Feeding Centre",
+            "type": "ngo",
+            "fssai_license": "NGO-8829-KA",
+            "address": "KR Market, Bangalore",
+            "status": "pending",
+            "submitted_at": (now - timedelta(hours=5)).isoformat(),
+        },
+        {
+            "id": "req_03",
+            "name": "Marriott Convention Center",
+            "type": "donor",
+            "fssai_license": "11899223344551",
+            "address": "Whitefield, Bangalore",
+            "status": "pending",
+            "submitted_at": (now - timedelta(hours=1)).isoformat(),
+        },
+    ]
+    for v in verifications:
+        db.set_document("verifications", v["id"], v)
+
+    # 8. Escalations
+    escalations = [
+        {
+            "id": "esc_101",
+            "listing_id": "list_wedding_rush_3",
+            "donor": "Royal Orchid Hotel",
+            "reason": "No responses within 15km. Search radius broadened to 30km.",
+            "timestamp": "12m ago",
+            "resolved": False,
+        },
+        {
+            "id": "esc_100",
+            "listing_id": "list_lunch_rush_1",
+            "donor": "Taj Caterers",
+            "reason": "Rank 1 NGO response timeout. Escalated to Koramangala Kitchen.",
+            "timestamp": "34m ago",
+            "resolved": True,
+        },
+    ]
+    for e in escalations:
+        db.set_document("escalations", e["id"], e)
+
+    # 9. Baseline impact records
     import importlib.util
-    spec = importlib.util.spec_from_file_location("impact_calc", root_dir / "services" / "analytics-service" / "app" / "impact.py")
+    spec = importlib.util.spec_from_file_location(
+        "impact_calc", root_dir / "services" / "analytics-service" / "app" / "impact.py"
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     calc = mod.ImpactCalculator()

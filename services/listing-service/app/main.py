@@ -1,10 +1,24 @@
+import os
+import sys
+from pathlib import Path
+
+# Ensure services/listing-service and services/shared are available on sys.path
+_service_dir = Path(__file__).resolve().parent.parent
+_shared_dir = _service_dir.parent / "shared"
+if str(_service_dir) not in sys.path:
+    sys.path.insert(0, str(_service_dir))
+if str(_shared_dir) not in sys.path:
+    sys.path.insert(0, str(_shared_dir))
+
 import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from shared.config import settings
 from shared.logging_setup import set_correlation_id, setup_logger
+
 from app.routes import router
+from app.admin_routes import router as admin_router
 
 logger = setup_logger("listing_service")
 
@@ -44,6 +58,7 @@ def health_check():
 
 
 app.include_router(router)
+app.include_router(admin_router)
 
 if __name__ == "__main__":
     import uvicorn

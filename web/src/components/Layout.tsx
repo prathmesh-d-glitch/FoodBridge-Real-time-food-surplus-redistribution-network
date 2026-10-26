@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   UtensilsCrossed,
   Map,
@@ -8,10 +8,17 @@ import {
   ShieldAlert,
   Globe,
   User,
-  Plus,
+  LogOut,
+  LogIn,
+  MapPin,
+  Navigation,
+  Loader2,
+  Check,
 } from 'lucide-react';
 import { Language, getTranslation } from '../i18n';
+import { useLanguage } from '../i18n/context';
 import { UserSession } from '../firebase';
+import { getCurrentLocationWithPlaceName, formatCoordinates } from '../lib/geo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,8 +26,9 @@ interface LayoutProps {
   setActivePage: (page: string) => void;
   language: Language;
   setLanguage: (lang: Language) => void;
-  user: UserSession;
+  user: UserSession | null;
   onSwitchRole: (role: 'donor' | 'ngo' | 'volunteer' | 'admin') => void;
+  onLogout?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -31,8 +39,17 @@ export const Layout: React.FC<LayoutProps> = ({
   setLanguage,
   user,
   onSwitchRole,
+  onLogout,
 }) => {
   const t = getTranslation(language);
+  // Also pull from context so Layout re-renders on language change
+  const { t: tc } = useLanguage();
+
+  // Global header location indicator
+  const [currentPlace, setCurrentPlace] = useState('Palace Grounds, Bengaluru');
+  const [coordsSummary, setCoordsSummary] = useState('12.9716° N, 77.5946° E');
+  const [locating, setLocating] = useState(false);
+  const [locationPillSuccess, setLocationPillSuccess] = useState(false);
 
   const navItems = [
     { id: 'donor', label: t.nav.donor, icon: <UtensilsCrossed size={13} /> },
@@ -45,6 +62,22 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const currentTab = activePage === 'post_surplus' ? 'donor' : activePage;
 
+  const handleHeaderDetectLocation = async () => {
+    setLocating(true);
+    setLocationPillSuccess(false);
+    try {
+      const loc = await getCurrentLocationWithPlaceName();
+      setCurrentPlace(loc.placeName);
+      setCoordsSummary(formatCoordinates(loc.latitude, loc.longitude));
+      setLocationPillSuccess(true);
+      setTimeout(() => setLocationPillSuccess(false), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Could not access GPS. Please check browser location permissions.');
+    } finally {
+      setLocating(false);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Top Navbar */}
@@ -56,23 +89,24 @@ export const Layout: React.FC<LayoutProps> = ({
         >
           <div
             style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '6px',
+              width: '26px',
+              height: '26px',
+              borderRadius: '7px',
               background: 'var(--accent-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 2px 5px rgba(27, 122, 67, 0.25)',
             }}
           >
-            <UtensilsCrossed size={13} color="#ffffff" />
+            <UtensilsCrossed size={14} color="#ffffff" />
           </div>
-          <span style={{ fontSize: '0.95rem', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+          <span style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
             FoodBridge
           </span>
         </div>
 
-        {/* Apple Segmented Navigation Bar */}
+        {/* Segmented Navigation Bar */}
         <nav className="segmented-nav">
           {navItems.map((item) => (
             <button
@@ -88,7 +122,47 @@ export const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         {/* Utility Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Real-time Location Pill & Reverse Geocoded Place Name */}
+          <button
+            type="button"
+            onClick={handleHeaderDetectLocation}
+            disabled={locating}
+            title={`Detected Place: ${currentPlace} (${coordsSummary}). Click to refresh location.`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              background: locationPillSuccess ? 'rgba(27, 122, 67, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+              border: locationPillSuccess ? '1px solid rgba(27, 122, 67, 0.3)' : '1px solid transparent',
+              padding: '4px 10px',
+              borderRadius: '100px',
+              fontSize: '11.5px',
+              fontWeight: 500,
+              color: locationPillSuccess ? 'var(--accent-primary)' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              maxWidth: '220px',
+            }}
+          >
+            {locating ? (
+              <Loader2 size={12} className="spin" color="var(--accent-primary)" />
+            ) : locationPillSuccess ? (
+              <Check size={12} color="var(--accent-primary)" />
+            ) : (
+              <MapPin size={12} color="var(--accent-primary)" />
+            )}
+            <span
+              style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {locating ? tc.common.detecting_place : currentPlace}
+            </span>
+          </button>
+
           {/* Language Selector */}
           <div
             style={{
@@ -121,53 +195,91 @@ export const Layout: React.FC<LayoutProps> = ({
             </select>
           </div>
 
-          {/* Role Switcher */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              background: 'rgba(0, 0, 0, 0.04)',
-              padding: '3px 9px',
-              borderRadius: '6px',
-            }}
-          >
-            <User size={12} color="var(--accent-primary)" />
-            <select
-              value={user.role}
-              onChange={(e) => {
-                const newRole = e.target.value as any;
-                onSwitchRole(newRole);
-                if (newRole === 'donor') setActivePage('donor');
-                if (newRole === 'ngo') setActivePage('ngo');
-                if (newRole === 'volunteer') setActivePage('volunteer');
-                if (newRole === 'admin') setActivePage('admin');
-              }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                fontWeight: 500,
-                outline: 'none',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                textTransform: 'capitalize',
-              }}
+          {/* User Session Profile & Controls */}
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* Role Switcher Pill */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: 'rgba(0, 0, 0, 0.04)',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                }}
+              >
+                <User size={12} color="var(--accent-primary)" />
+                <select
+                  value={user.role}
+                  onChange={(e) => {
+                    const newRole = e.target.value as any;
+                    onSwitchRole(newRole);
+                    if (newRole === 'donor') setActivePage('donor');
+                    if (newRole === 'ngo') setActivePage('ngo');
+                    if (newRole === 'volunteer') setActivePage('volunteer');
+                    if (newRole === 'admin') setActivePage('admin');
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  <option value="admin">Admin ({user.email})</option>
+                  <option value="donor">Donor (donor@gmail.com)</option>
+                  <option value="ngo">NGO (ngo@gmail.com)</option>
+                  <option value="volunteer">Volunteer (volunteer@gmail.com)</option>
+                </select>
+              </div>
+
+              {/* Logout Button */}
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  title="Sign out of FoodBridge"
+                  style={{
+                    background: 'rgba(215, 0, 21, 0.07)',
+                    border: 'none',
+                    color: 'var(--accent-red)',
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11.5px',
+                    fontWeight: 500,
+                  }}
+                >
+                  <LogOut size={12} />
+                  <span>{tc.common.exit}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setActivePage('login')}
+              style={{ padding: '4px 12px', fontSize: '12px', minHeight: '28px' }}
             >
-              <option value="donor">Donor</option>
-              <option value="ngo">NGO</option>
-              <option value="volunteer">Volunteer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
+              <LogIn size={13} />
+              <span>{tc.common.sign_in}</span>
+            </button>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="main-content">
-        {children}
-      </main>
+      <main className="main-content">{children}</main>
     </div>
   );
 };

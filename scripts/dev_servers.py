@@ -6,6 +6,10 @@ import time
 from pathlib import Path
 
 root_dir = Path(__file__).resolve().parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+if str(root_dir / "services" / "shared") not in sys.path:
+    sys.path.insert(0, str(root_dir / "services" / "shared"))
 
 # 1. Seed data first
 try:

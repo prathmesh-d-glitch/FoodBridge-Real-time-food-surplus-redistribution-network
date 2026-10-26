@@ -3,6 +3,7 @@ import { Truck, Check, Clock, Thermometer, AlertTriangle, Navigation } from 'luc
 import { api, VolunteerRoute as RouteType } from '../lib/api';
 import { MapView, MapMarker } from '../components/MapView';
 import { UserSession } from '../firebase';
+import { useLanguage } from '../i18n/context';
 
 interface VolunteerRouteProps {
   user: UserSession;
@@ -12,6 +13,7 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
   const [routes, setRoutes] = useState<RouteType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<RouteType | null>(null);
+  const { t } = useLanguage();
 
   // Handover Log Modal state
   const [activeStop, setActiveStop] = useState<any>(null);
@@ -20,13 +22,22 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
   const [loggingHandover, setLoggingHandover] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
 
+  const getSavedCompletedStops = (): Set<string> => {
+    try {
+      const saved = localStorage.getItem(`foodbridge_completed_stops_${user.uid}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+
   const fetchRoutes = async () => {
     setLoading(true);
     const data = await api.getVolunteerRoutes(user.uid);
-    setRoutes(data);
-    if (data.length > 0) {
-      setSelectedRoute(data[0]);
-    } else {
+    const completedSet = getSavedCompletedStops();
+
+    let loadedRoutes = data;
+    if (loadedRoutes.length === 0) {
       // Mock active route if none exists so examiners can test immediately
       const mockRoute: RouteType = {
         id: 'rt_opt_blr_01',
@@ -58,8 +69,21 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
         estimated_duration_mins: 45.0,
         status: 'assigned',
       };
-      setRoutes([mockRoute]);
-      setSelectedRoute(mockRoute);
+      loadedRoutes = [mockRoute];
+    }
+
+    // Apply any saved completed stops to maintain persistence on refresh
+    const synchronized = loadedRoutes.map((r) => ({
+      ...r,
+      stops: r.stops.map((s) => ({
+        ...s,
+        completed: s.completed || completedSet.has(s.stop_id),
+      })),
+    }));
+
+    setRoutes(synchronized);
+    if (synchronized.length > 0) {
+      setSelectedRoute(synchronized[0]);
     }
     setLoading(false);
   };
@@ -83,12 +107,23 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
         is_pickup: activeStop.stop_type === 'pickup',
       });
 
-      // Mark stop completed locally
+      // Save to backend routes collection
+      await api.completeRouteStop(selectedRoute.id, activeStop.stop_id);
+
+      // Save to local storage for instant persistent reload
+      const completedSet = getSavedCompletedStops();
+      completedSet.add(activeStop.stop_id);
+      localStorage.setItem(
+        `foodbridge_completed_stops_${user.uid}`,
+        JSON.stringify(Array.from(completedSet))
+      );
+
+      // Mark stop completed in local UI state
       const updatedStops = selectedRoute.stops.map((s) =>
         s.stop_id === activeStop.stop_id ? { ...s, completed: true } : s
       );
       setSelectedRoute({ ...selectedRoute, stops: updatedStops });
-      setStatusMsg(`Handover verified for stop: ${activeStop.target_name}!`);
+      setStatusMsg(`${t.volunteer.handover_saved}: ${activeStop.target_name}! ${t.volunteer.checkpoint_saved}`);
       setActiveStop(null);
       setTimeout(() => setStatusMsg(''), 5000);
     } finally {
@@ -116,10 +151,10 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '4px' }}>
-            Volunteer Delivery Route
+            {t.volunteer.title}
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            2-Opt TSP Optimized Itinerary &bull; Volunteer: {user.name}
+            {t.volunteer.subtitle} &bull; {t.volunteer.volunteer_label}: {user.name}
           </p>
         </div>
 
@@ -166,7 +201,7 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
         {/* Ordered Stops List */}
         <div>
           <div className="inset-section-label">
-            Optimized Route Stops ({selectedRoute?.stops.length || 0})
+            {t.volunteer.optimized_stops} ({selectedRoute?.stops.length || 0})
           </div>
 
           <div className="inset-table" style={{ padding: '8px 18px' }}>
@@ -245,18 +280,18 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Clock size={12} color="var(--accent-primary)" />
-                          <span>ETA: {new Date(stop.estimated_arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{t.volunteer.eta}: {new Date(stop.estimated_arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <AlertTriangle size={12} color="var(--accent-orange)" />
-                          <span>Deadline: {new Date(stop.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{t.volunteer.deadline}: {new Date(stop.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       </div>
                     </div>
 
                     {stop.completed ? (
                       <span className="badge badge-green" style={{ fontSize: '11px' }}>
-                        Handover Verified
+                        {t.volunteer.handover_verified}
                       </span>
                     ) : (
                       <button
@@ -265,7 +300,7 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
                         style={{ padding: '4px 12px', fontSize: '12px', minHeight: '28px' }}
                         onClick={() => setActiveStop(stop)}
                       >
-                        Verify Handover
+                        {t.volunteer.verify_handover}
                       </button>
                     )}
                   </div>
@@ -294,16 +329,16 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
         >
           <div className="apple-card" style={{ width: '100%', maxWidth: '420px', padding: '24px', boxShadow: 'var(--shadow-modal)' }}>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-              Verify Food Handover
+              {t.volunteer.verify_modal_title}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '18px' }}>
-              Confirm quality controls and record temperature for {activeStop.target_name}.
+              {t.volunteer.verify_modal_desc} {activeStop.target_name}.
             </p>
 
             <form onSubmit={handleVerifyHandover}>
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '6px' }}>
-                  Holding Temperature (°C)
+                  {t.volunteer.temp_label}
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
@@ -317,13 +352,13 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
                   <Thermometer size={16} color="var(--accent-green)" style={{ position: 'absolute', right: '12px', top: '12px' }} />
                 </div>
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
-                  FSSAI standard: Hot hold &gt;63°C, Chilled &lt;5°C
+                  {t.volunteer.temp_hint}
                 </span>
               </div>
 
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '6px' }}>
-                  Handover Notes
+                  {t.volunteer.notes_label}
                 </label>
                 <textarea
                   className="input-field"
@@ -335,10 +370,10 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setActiveStop(null)}>
-                  Cancel
+                  {t.volunteer.cancel}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={loggingHandover}>
-                  {loggingHandover ? 'Verifying...' : 'Submit Handover'}
+                  {loggingHandover ? t.volunteer.verifying : t.volunteer.submit_handover}
                 </button>
               </div>
             </form>

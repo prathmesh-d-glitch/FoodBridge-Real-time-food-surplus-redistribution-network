@@ -1,7 +1,23 @@
 import React, { useState } from 'react';
-import { Sparkles, Upload, ArrowLeft, AlertTriangle } from 'lucide-react';
+import {
+  Sparkles,
+  Upload,
+  ArrowLeft,
+  AlertTriangle,
+  MapPin,
+  Navigation,
+  Loader2,
+  CheckCircle2,
+  Compass,
+} from 'lucide-react';
 import { api } from '../lib/api';
 import { UserSession } from '../firebase';
+import {
+  formatCoordinates,
+  getCurrentLocationWithPlaceName,
+  LocationResult,
+  PRESET_LOCATIONS,
+} from '../lib/geo';
 
 interface PostSurplusProps {
   user: UserSession;
@@ -18,6 +34,15 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
   const [quantityKg, setQuantityKg] = useState(25.0);
   const [portions, setPortions] = useState(60);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+
+  // Location state
+  const [placeName, setPlaceName] = useState('Palace Grounds, MG Road, Bengaluru');
+  const [latitude, setLatitude] = useState(12.9716);
+  const [longitude, setLongitude] = useState(77.5946);
+  const [locating, setLocating] = useState(false);
+  const [locationSuccess, setLocationSuccess] = useState(false);
+  const [locationStatusText, setLocationStatusText] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Gemini AI Analysis state
   const [analyzing, setAnalyzing] = useState(false);
@@ -53,10 +78,46 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
     }
   };
 
+  const handleGetLocation = async () => {
+    setLocating(true);
+    setLocationError(null);
+    setLocationStatusText('Querying browser GPS & reverse geocoding place name...');
+
+    try {
+      const loc: LocationResult = await getCurrentLocationWithPlaceName();
+      setLatitude(loc.latitude);
+      setLongitude(loc.longitude);
+      setPlaceName(loc.formattedAddress || loc.placeName);
+      setLocationSuccess(true);
+      setLocationStatusText(
+        `Acquired: ${loc.placeName} (${formatCoordinates(loc.latitude, loc.longitude)})`
+      );
+    } catch (err: any) {
+      setLocationError(err.message || 'Unable to retrieve location from device.');
+      setLocationStatusText(null);
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const handleApplyPreset = (preset: LocationResult) => {
+    setLatitude(preset.latitude);
+    setLongitude(preset.longitude);
+    setPlaceName(preset.formattedAddress);
+    setLocationSuccess(true);
+    setLocationError(null);
+    setLocationStatusText(`Selected Preset: ${preset.placeName}`);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) {
       setErrorMsg('Please enter a descriptive food title.');
+      return;
+    }
+
+    if (!placeName) {
+      setErrorMsg('Please specify the pickup place name or address.');
       return;
     }
 
@@ -74,9 +135,9 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
         portions: Number(portions),
         prepared_at: new Date().toISOString(),
         location: {
-          latitude: 12.9716,
-          longitude: 77.5946,
-          address: 'Palace Grounds, MG Road, Bangalore',
+          latitude: Number(latitude),
+          longitude: Number(longitude),
+          address: placeName,
         },
         photo_base64: photoBase64,
       };
@@ -91,7 +152,7 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
   };
 
   return (
-    <div style={{ maxWidth: '740px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '760px', margin: '0 auto', paddingBottom: '32px' }}>
       {/* Header & Back Link */}
       <div style={{ marginBottom: '20px' }}>
         <button
@@ -138,134 +199,146 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
           <div className="inset-section-label">
             Photo &amp; Quality Inspection
           </div>
-
-          <div className="inset-group" style={{ padding: '20px', marginBottom: 0 }}>
-            <div
-              style={{
-                border: '1px dashed var(--border-medium)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '20px 16px',
-                textAlign: 'center',
-                background: 'var(--bg-app)',
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'border-color 0.14s ease',
-              }}
-            >
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-              />
-
+          <div className="apple-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: photoBase64 ? '180px 1fr' : '1fr', gap: '20px' }}>
               {photoBase64 ? (
                 <div>
                   <img
                     src={photoBase64}
                     alt="Uploaded food"
-                    style={{ maxHeight: '140px', borderRadius: '8px', margin: '0 auto 8px', display: 'block' }}
+                    style={{
+                      width: '100%',
+                      height: '140px',
+                      objectFit: 'cover',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
                   />
-                  <span style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: 500 }}>
-                    Photo attached &bull; Click to replace
-                  </span>
+                  <label
+                    className="btn btn-secondary"
+                    style={{ marginTop: '8px', width: '100%', textAlign: 'center', cursor: 'pointer', fontSize: '12px', padding: '6px' }}
+                  >
+                    Replace Photo
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                  </label>
                 </div>
               ) : (
-                <div>
-                  <Upload size={20} color="var(--text-tertiary)" style={{ margin: '0 auto 6px' }} />
-                  <p style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500, marginBottom: '2px' }}>
-                    Click or drop surplus food photo
-                  </p>
-                  <p style={{ color: 'var(--text-tertiary)', fontSize: '11.5px', margin: 0 }}>
-                    Multimodal inspection analyzes portion count, safety packaging, and freshness
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {analyzing && (
-              <div style={{ marginTop: '12px', color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent-primary)' }} />
-                <span>Inspecting food safety standards and estimated portions...</span>
-              </div>
-            )}
-
-            {aiResult && !analyzing && (
-              <div
-                style={{
-                  marginTop: '12px',
-                  background: 'rgba(0, 0, 0, 0.025)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '10px 14px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '12.5px' }}>
-                    Inspection Analysis ({(aiResult.confidence * 100).toFixed(0)}% Confidence)
+                <label
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1.5px dashed var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '30px 16px',
+                    cursor: 'pointer',
+                    background: 'rgba(0, 0, 0, 0.02)',
+                    transition: 'border-color 0.15s ease',
+                  }}
+                >
+                  <Upload size={24} color="var(--accent-primary)" style={{ marginBottom: '8px' }} />
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
+                    Upload Food Batch Photo
                   </span>
-                  <span className="badge badge-green" style={{ fontSize: '10.5px' }}>Verified</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
+                    Gemini Multimodal AI will inspect freshness and estimate portion counts
+                  </span>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                </label>
+              )}
+
+              {/* AI Analysis Result Card */}
+              {analyzing ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    padding: '24px',
+                    background: 'rgba(27, 122, 67, 0.04)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  <Sparkles size={16} color="var(--accent-primary)" className="spin" />
+                  <span style={{ fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 500 }}>
+                    Gemini 1.5 Flash analyzing visual spoilage indicators...
+                  </span>
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '3px' }}>
-                  Type: <strong style={{ color: 'var(--text-primary)' }}>{aiResult.food_type}</strong> &bull; Estimated Portions: <strong style={{ color: 'var(--text-primary)' }}>{aiResult.estimated_portions}</strong> &bull; Shelf Life: <strong style={{ color: 'var(--text-primary)' }}>{aiResult.shelf_life_hours_hint} hrs</strong>
-                </div>
-                {aiResult.safety_flags && (
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
-                    Flags: {aiResult.safety_flags.join(', ')}
+              ) : aiResult ? (
+                <div
+                  style={{
+                    padding: '16px',
+                    background: 'rgba(27, 122, 67, 0.05)',
+                    border: '1px solid rgba(27, 122, 67, 0.2)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <Sparkles size={14} color="var(--accent-primary)" />
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
+                      AI Inspection: {aiResult.source === 'gemini_multimodal' ? 'Gemini 1.5 Flash' : 'Rule Table Fallback'}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    Identified: {aiResult.food_type}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    Recommended Shelf Life: <strong>{aiResult.shelf_life_hours_hint} hours</strong> (Confidence: {Math.round(aiResult.confidence * 100)}%)
+                  </div>
+                  {aiResult.safety_flags?.length > 0 && (
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                      {aiResult.safety_flags.map((flag: string, i: number) => (
+                        <span key={i} style={{ fontSize: '11px', background: 'rgba(27, 122, 67, 0.12)', color: 'var(--accent-primary)', padding: '2px 7px', borderRadius: '4px' }}>
+                          ✓ {flag.replace('_', ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        {/* Section 2: Food Information */}
+        {/* Section 2: Core Details */}
         <div style={{ marginBottom: '22px' }}>
           <div className="inset-section-label">
-            Surplus Information
+            Food Specifications
           </div>
-
-          <div className="inset-group" style={{ padding: '18px 20px', marginBottom: 0 }}>
-            <div style={{ marginBottom: '14px' }}>
+          <div className="apple-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '5px' }}>
-                Surplus Title *
+                Batch Title *
               </label>
               <input
                 type="text"
+                required
                 className="input-field"
-                placeholder="e.g. 50 Portions Veg Biryani & Dal Makhani"
+                placeholder="e.g. 50 Portions Paneer Butter Masala &amp; Jeera Rice"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                required
               />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '5px' }}>
-                Preparation Details &amp; Packaging Notes
+                Description &amp; Preparation Details
               </label>
               <textarea
                 className="input-field"
-                rows={3}
-                placeholder="Freshly prepared banquet food, sealed in food-grade thermal containers."
+                rows={2}
+                placeholder="Cooked at 1:30 PM for lunch banquet, kept strictly in hot-hold bain-marie at 68°C."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-          </div>
-        </div>
 
-        {/* Section 3: Safe Storage & Classification */}
-        <div style={{ marginBottom: '22px' }}>
-          <div className="inset-section-label">
-            Storage &amp; Classification
-          </div>
-
-          <div className="inset-group" style={{ padding: '18px 20px', marginBottom: 0 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '5px' }}>
-                  Food Category
+                  Category (Determines Safe Window)
                 </label>
                 <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="cooked_meals">Cooked Meals (4 hrs hot / 3 hrs ambient)</option>
@@ -327,6 +400,180 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
                   value={portions}
                   onChange={(e) => setPortions(parseInt(e.target.value) || 0)}
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Pickup Location & Geolocation */}
+        <div style={{ marginBottom: '24px' }}>
+          <div className="inset-section-label">
+            Pickup Location &amp; Spatial Dispatch Point
+          </div>
+          <div className="apple-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h4 style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px 0' }}>
+                  Pickup Address &amp; Place Name
+                </h4>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
+                  Used to calculate transit ETAs for recipient NGOs and 2-Opt volunteer couriers.
+                </p>
+              </div>
+
+              {/* Get My Location Button */}
+              <button
+                type="button"
+                onClick={handleGetLocation}
+                disabled={locating}
+                className="btn btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  color: 'var(--accent-primary)',
+                  borderColor: 'rgba(27, 122, 67, 0.3)',
+                  background: locating ? 'rgba(27, 122, 67, 0.08)' : 'rgba(27, 122, 67, 0.05)',
+                }}
+              >
+                {locating ? (
+                  <>
+                    <Loader2 size={14} className="spin" />
+                    <span>Detecting Place...</span>
+                  </>
+                ) : (
+                  <>
+                    <Navigation size={14} />
+                    <span>Get My Location</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {locationError && (
+              <div
+                style={{
+                  background: 'rgba(215, 0, 21, 0.08)',
+                  border: '1px solid rgba(215, 0, 21, 0.2)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '8px 12px',
+                  color: 'var(--accent-red)',
+                  marginBottom: '14px',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <AlertTriangle size={14} />
+                <span>{locationError}</span>
+              </div>
+            )}
+
+            {locationStatusText && (
+              <div
+                style={{
+                  background: 'rgba(27, 122, 67, 0.08)',
+                  border: '1px solid rgba(27, 122, 67, 0.2)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '8px 12px',
+                  color: 'var(--accent-primary)',
+                  marginBottom: '14px',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <CheckCircle2 size={14} />
+                <span>{locationStatusText}</span>
+              </div>
+            )}
+
+            {/* Editable Place Name Input */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                Place Name / Address *
+              </label>
+              <div style={{ position: 'relative' }}>
+                <MapPin size={15} color="var(--accent-primary)" style={{ position: 'absolute', left: '12px', top: '11px' }} />
+                <input
+                  type="text"
+                  required
+                  className="input-field"
+                  placeholder="e.g. Palace Grounds, MG Road, Bengaluru"
+                  value={placeName}
+                  onChange={(e) => setPlaceName(e.target.value)}
+                  style={{ paddingLeft: '34px' }}
+                />
+              </div>
+            </div>
+
+            {/* Geocoordinates Badge & Manual Coordinates */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                padding: '12px',
+                background: 'rgba(0, 0, 0, 0.02)',
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle)',
+                marginBottom: '14px',
+              }}
+            >
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '3px' }}>
+                  Latitude
+                </label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  className="input-field tabular-numbers"
+                  value={latitude}
+                  onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                  style={{ padding: '6px 10px', fontSize: '12.5px' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '3px' }}>
+                  Longitude
+                </label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  className="input-field tabular-numbers"
+                  value={longitude}
+                  onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                  style={{ padding: '6px 10px', fontSize: '12.5px' }}
+                />
+              </div>
+            </div>
+
+            {/* Quick Preset Places */}
+            <div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
+                Quick Preset Locations:
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Object.entries(PRESET_LOCATIONS).map(([key, preset]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleApplyPreset(preset)}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '11.5px',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    📍 {preset.placeName}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

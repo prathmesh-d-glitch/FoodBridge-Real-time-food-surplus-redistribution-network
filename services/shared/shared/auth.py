@@ -13,7 +13,7 @@ security = HTTPBearer(auto_error=False)
 MOCK_TOKENS = {
     "mock-donor-token": UserProfile(
         uid="donor_taj_palace",
-        email="chef@tajpalace.example",
+        email="donor@gmail.com",
         name="Taj Palace Caterers",
         role=UserRole.DONOR,
         phone="+919876543210",
@@ -21,7 +21,7 @@ MOCK_TOKENS = {
     ),
     "mock-ngo-token": UserProfile(
         uid="ngo_robin_hood",
-        email="ops@robinhoodarmy.example",
+        email="ngo@gmail.com",
         name="Robin Hood Army Bangalore",
         role=UserRole.NGO,
         phone="+919876543211",
@@ -30,7 +30,7 @@ MOCK_TOKENS = {
     ),
     "mock-volunteer-token": UserProfile(
         uid="vol_arun_kumar",
-        email="arun.k@volunteer.example",
+        email="volunteer@gmail.com",
         name="Arun Kumar",
         role=UserRole.VOLUNTEER,
         phone="+919876543212",
@@ -38,10 +38,43 @@ MOCK_TOKENS = {
     ),
     "mock-admin-token": UserProfile(
         uid="admin_super",
-        email="admin@foodbridge.org",
+        email="admin@gmail.com",
         name="FoodBridge System Admin",
         role=UserRole.ADMIN,
         phone="+919876543213",
+        verification_status=VerificationStatus.VERIFIED,
+    ),
+    "token-admin@gmail.com": UserProfile(
+        uid="admin_super",
+        email="admin@gmail.com",
+        name="FoodBridge System Admin",
+        role=UserRole.ADMIN,
+        phone="+919876543213",
+        verification_status=VerificationStatus.VERIFIED,
+    ),
+    "token-donor@gmail.com": UserProfile(
+        uid="donor_taj_palace",
+        email="donor@gmail.com",
+        name="Taj Palace Caterers",
+        role=UserRole.DONOR,
+        phone="+919876543210",
+        verification_status=VerificationStatus.VERIFIED,
+    ),
+    "token-ngo@gmail.com": UserProfile(
+        uid="ngo_robin_hood",
+        email="ngo@gmail.com",
+        name="Robin Hood Army Bangalore",
+        role=UserRole.NGO,
+        phone="+919876543211",
+        verification_status=VerificationStatus.VERIFIED,
+        capacity_kg=250.0,
+    ),
+    "token-volunteer@gmail.com": UserProfile(
+        uid="vol_arun_kumar",
+        email="volunteer@gmail.com",
+        name="Arun Kumar",
+        role=UserRole.VOLUNTEER,
+        phone="+919876543212",
         verification_status=VerificationStatus.VERIFIED,
     ),
 }

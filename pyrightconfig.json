@@ -1,0 +1,16 @@
+{
+  "include": ["services", "scripts", "simulator"],
+  "extraPaths": [
+    "services/shared",
+    "services/listing-service",
+    "services/matching-service",
+    "services/notification-service",
+    "services/logistics-service",
+    "services/analytics-service",
+    "services/expiry-job"
+  ],
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false
+}

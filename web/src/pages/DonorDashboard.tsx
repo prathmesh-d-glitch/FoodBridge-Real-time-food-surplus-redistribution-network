@@ -3,6 +3,7 @@ import { Plus, RefreshCw, Utensils } from 'lucide-react';
 import { useListings } from '../hooks/useListings';
 import { ListingCard } from '../components/ListingCard';
 import { UserSession } from '../firebase';
+import { useLanguage } from '../i18n/context';
 
 interface DonorDashboardProps {
   user: UserSession;
@@ -11,6 +12,7 @@ interface DonorDashboardProps {
 
 export const DonorDashboard: React.FC<DonorDashboardProps> = ({ user, onNavigatePost }) => {
   const { listings, loading, refresh } = useListings();
+  const { t } = useLanguage();
 
   const donorListings = listings.filter((l) => l.donor_id === user.uid || user.role === 'admin');
 
@@ -23,21 +25,21 @@ export const DonorDashboard: React.FC<DonorDashboardProps> = ({ user, onNavigate
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.025em', marginBottom: '3px' }}>
-            Surplus Postings
+            {t.donor.title}
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-            {user.name} &bull; Spoilage-aware food redistribution center
+            {user.name} &bull; {t.donor.subtitle}
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button type="button" className="btn btn-secondary" onClick={refresh} title="Refresh data">
             <RefreshCw size={13} />
-            <span>Refresh</span>
+            <span>{t.donor.refresh}</span>
           </button>
           <button type="button" className="btn btn-primary" onClick={onNavigatePost}>
             <Plus size={14} />
-            <span>Post Surplus</span>
+            <span>{t.donor.post_surplus}</span>
           </button>
         </div>
       </div>
@@ -64,28 +66,28 @@ export const DonorDashboard: React.FC<DonorDashboardProps> = ({ user, onNavigate
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
             <div>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{donorListings.length}</span> active postings
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{donorListings.length}</span> {t.donor.active_postings}
             </div>
             <span style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
             <div>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{totalPortions}</span> portions available
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{totalPortions}</span> {t.donor.portions_available}
             </div>
             <span style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
             <div>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{totalKg.toFixed(1)} kg</span> total weight
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{totalKg.toFixed(1)} kg</span> {t.donor.total_weight}
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary)', fontSize: '12px', fontWeight: 500 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-primary)' }} />
-            <span>All within safe consumption windows</span>
+            <span>{t.donor.safe_windows}</span>
           </div>
         </div>
       )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-          Loading surplus postings...
+          {t.donor.loading}
         </div>
       ) : donorListings.length === 0 ? (
         <div className="apple-card" style={{ padding: '48px 24px', textAlign: 'center', maxWidth: '480px', margin: '40px auto' }}>
@@ -105,20 +107,20 @@ export const DonorDashboard: React.FC<DonorDashboardProps> = ({ user, onNavigate
             <Utensils size={18} />
           </div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
-            No Active Postings
+            {t.donor.no_postings_title}
           </h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px', lineHeight: 1.5 }}>
-            Post surplus banquet or restaurant food to begin matching with nearby verified shelters.
+            {t.donor.no_postings_desc}
           </p>
           <button type="button" className="btn btn-primary" onClick={onNavigatePost}>
             <Plus size={14} />
-            <span>Post Food Surplus</span>
+            <span>{t.donor.post_food_surplus}</span>
           </button>
         </div>
       ) : (
         <div>
           <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px' }}>
-            Active Batches ({donorListings.length})
+            {t.donor.active_batches} ({donorListings.length})
           </div>
 
           <div className="grid-cols-auto">

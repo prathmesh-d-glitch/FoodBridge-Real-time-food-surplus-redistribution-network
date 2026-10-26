@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Server,
   UserCheck,
@@ -6,102 +6,173 @@ import {
   Check,
   X,
   Activity,
+  RefreshCw,
+  CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
+import { api, PartnerVerification, EscalationAlert, ServiceTelemetry } from '../lib/api';
 import { UserSession } from '../firebase';
+import { useLanguage } from '../i18n/context';
 
 interface AdminConsoleProps {
   user: UserSession;
 }
 
 export const AdminConsole: React.FC<AdminConsoleProps> = ({ user }) => {
-  const [servicesHealth] = useState<Record<string, boolean>>({
-    'listing-service': true,
-    'matching-service': true,
-    'notification-service': true,
-    'logistics-service': true,
-    'analytics-service': true,
-    'expiry-job': true,
+  const { t } = useLanguage();
+  const [telemetry, setTelemetry] = useState<ServiceTelemetry>({
+    'listing-service': { healthy: true, port: 8001, latency_ms: 12.4 },
+    'matching-service': { healthy: true, port: 8002, latency_ms: 15.1 },
+    'notification-service': { healthy: true, port: 8003, latency_ms: 8.9 },
+    'logistics-service': { healthy: true, port: 8004, latency_ms: 11.2 },
+    'analytics-service': { healthy: true, port: 8005, latency_ms: 14.5 },
+    'expiry-job': { healthy: true, port: 8006, latency_ms: 9.0 },
   });
 
-  const [verificationQueue, setVerificationQueue] = useState([
-    {
-      id: 'req_01',
-      name: 'ITC Gardenia Banquets',
-      type: 'donor',
-      fssai_license: '11223344556677',
-      address: 'Residency Road, Bangalore',
-      status: 'pending',
-    },
-    {
-      id: 'req_02',
-      name: 'Hasiru Dala Feeding Centre',
-      type: 'ngo',
-      fssai_license: 'NGO-8829-KA',
-      address: 'KR Market, Bangalore',
-      status: 'pending',
-    },
-  ]);
+  const [verificationQueue, setVerificationQueue] = useState<PartnerVerification[]>([]);
+  const [escalations, setEscalations] = useState<EscalationAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshingTelemetry, setRefreshingTelemetry] = useState(false);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
-  const escalations = [
-    {
-      id: 'esc_101',
-      listing_id: 'list_wedding_rush_3',
-      donor: 'Royal Orchid Hotel',
-      reason: 'No responses within 15km. Search radius broadened to 30km.',
-      timestamp: '12m ago',
-      resolved: false,
-    },
-    {
-      id: 'esc_100',
-      listing_id: 'list_lunch_rush_1',
-      donor: 'Taj Caterers',
-      reason: 'Rank 1 NGO response timeout. Escalated to Koramangala Kitchen.',
-      timestamp: '34m ago',
-      resolved: true,
-    },
-  ];
+  const loadAllAdminData = async () => {
+    setLoading(true);
+    try {
+      const [vers, escs, telem] = await Promise.all([
+        api.getVerifications(),
+        api.getEscalations(),
+        api.getHealthTelemetry(),
+      ]);
+      setVerificationQueue(vers);
+      setEscalations(escs);
+      setTelemetry(telem);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleApprove = (id: string) => {
+  const handleRefreshTelemetry = async () => {
+    setRefreshingTelemetry(true);
+    try {
+      const telem = await api.getHealthTelemetry();
+      setTelemetry(telem);
+    } finally {
+      setRefreshingTelemetry(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllAdminData();
+    const interval = setInterval(loadAllAdminData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleApprove = async (id: string, name: string) => {
+    // Optimistic UI update
     setVerificationQueue((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: 'verified' } : item))
     );
+    setActionNotice(`${t.admin.approved_partner} "${name}". ${t.admin.persisted}`);
+    setTimeout(() => setActionNotice(null), 4000);
+
+    // Call persistent backend API
+    await api.approveVerification(id, user.token);
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string, name: string) => {
     setVerificationQueue((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: 'rejected' } : item))
     );
+    setActionNotice(`${t.admin.rejected_partner} "${name}". ${t.admin.persisted}`);
+    setTimeout(() => setActionNotice(null), 4000);
+
+    await api.rejectVerification(id, user.token);
+  };
+
+  const handleResolveEscalation = async (escId: string) => {
+    setEscalations((prev) =>
+      prev.map((esc) => (esc.id === escId ? { ...esc, resolved: true } : esc))
+    );
+    setActionNotice(`${t.admin.escalation_resolved}`);
+    setTimeout(() => setActionNotice(null), 4000);
+
+    await api.resolveEscalation(escId, user.token);
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '4px' }}>
-            System Administration
+            {t.admin.title}
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Microservice telemetry, partner verification queue, and matching escalations
+            {t.admin.subtitle}
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 500 }}>
-          <Activity size={14} />
-          <span>All Services Operational</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={loadAllAdminData}
+            style={{ fontSize: '12px', padding: '5px 12px' }}
+          >
+            <RefreshCw size={12} className={loading ? 'spin' : ''} />
+            <span>{t.admin.sync_data}</span>
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--accent-primary)', fontWeight: 500 }}>
+            <Activity size={14} />
+            <span>{t.admin.platform_active}</span>
+          </div>
         </div>
       </div>
 
+      {actionNotice && (
+        <div
+          style={{
+            background: 'rgba(27, 122, 67, 0.08)',
+            border: '1px solid rgba(27, 122, 67, 0.25)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            color: 'var(--accent-primary)',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            fontWeight: 500,
+          }}
+        >
+          <CheckCircle2 size={15} />
+          <span>{actionNotice}</span>
+        </div>
+      )}
+
       {/* Microservice Health Indicators */}
       <div className="inset-group" style={{ marginBottom: '24px' }}>
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Server size={14} color="var(--accent-primary)" />
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Microservices Telemetry
-          </span>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Server size={14} color="var(--accent-primary)" />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {t.admin.telemetry_title}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleRefreshTelemetry}
+            className="btn btn-tertiary"
+            style={{ padding: '2px 8px', fontSize: '11.5px', minHeight: '24px' }}
+          >
+            <RefreshCw size={11} className={refreshingTelemetry ? 'spin' : ''} />
+            <span>{t.admin.probe_health}</span>
+          </button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-          {Object.entries(servicesHealth).map(([svc, ok], idx) => (
+          {Object.entries(telemetry).map(([svc, info], idx) => (
             <div
               key={svc}
               style={{
@@ -118,18 +189,20 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ user }) => {
                   {svc}
                 </div>
                 <div className="tabular-numbers" style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                  Port 800{svc.length % 6 + 1}
+                  {t.admin.port} {info.port} {info.latency_ms ? `· ${info.latency_ms}ms` : ''}
                 </div>
               </div>
-              <span
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: ok ? 'var(--accent-primary)' : 'var(--accent-red)',
-                  boxShadow: ok ? '0 0 0 2px rgba(27, 122, 67, 0.15)' : 'none',
-                }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    background: info.healthy ? 'var(--accent-primary)' : 'var(--accent-red)',
+                    boxShadow: info.healthy ? '0 0 0 2px rgba(27, 122, 67, 0.2)' : 'none',
+                  }}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -139,7 +212,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ user }) => {
         {/* Verification Queue */}
         <div>
           <div className="inset-section-label">
-            Partner Verification Queue ({verificationQueue.length})
+            {t.admin.verification_queue} ({verificationQueue.length})
           </div>
 
           <div className="inset-table">
@@ -160,7 +233,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ user }) => {
                       </span>
                     </div>
                     <div className="tabular-numbers" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                      License: <span style={{ fontFamily: 'var(--font-mono)' }}>{item.fssai_license}</span> &bull; {item.address}
+                      {t.admin.license}: <span style={{ fontFamily: 'var(--font-mono)' }}>{item.fssai_license}</span> &bull; {item.address}
                     </div>
                   </div>
 
@@ -169,26 +242,31 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ user }) => {
                   </span>
                 </div>
 
-                {item.status === 'pending' && (
+                {item.status === 'pending' ? (
                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
                     <button
                       type="button"
                       className="btn btn-secondary"
                       style={{ padding: '3px 12px', fontSize: '12px', minHeight: '28px' }}
-                      onClick={() => handleReject(item.id)}
+                      onClick={() => handleReject(item.id, item.name)}
                     >
                       <X size={12} />
-                      Reject
+                      {t.admin.reject}
                     </button>
                     <button
                       type="button"
                       className="btn btn-primary"
                       style={{ padding: '3px 14px', fontSize: '12px', minHeight: '28px' }}
-                      onClick={() => handleApprove(item.id)}
+                      onClick={() => handleApprove(item.id, item.name)}
                     >
                       <Check size={13} />
-                      Approve
+                      {t.admin.approve}
                     </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', color: item.status === 'verified' ? 'var(--accent-primary)' : 'var(--accent-red)', paddingTop: '4px' }}>
+                    {item.status === 'verified' ? <ShieldCheck size={13} /> : <X size={13} />}
+                    <span>{t.admin.status_saved}</span>
                   </div>
                 )}
               </div>
@@ -199,7 +277,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ user }) => {
         {/* Escalations Monitor */}
         <div>
           <div className="inset-section-label">
-            Matching Escalation Alerts ({escalations.length})
+            {t.admin.escalations_title} ({escalations.length})
           </div>
 
           <div className="inset-table">
@@ -220,10 +298,21 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ user }) => {
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>
                   {esc.reason}
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                   <span className={`badge ${esc.resolved ? 'badge-neutral' : 'badge-amber'}`} style={{ fontSize: '11px' }}>
-                    {esc.resolved ? 'Resolved' : 'Active Escalation'}
+                    {esc.resolved ? t.admin.resolved : t.admin.active_escalation}
                   </span>
+
+                  {!esc.resolved && (
+                    <button
+                      type="button"
+                      onClick={() => handleResolveEscalation(esc.id)}
+                      className="btn btn-secondary"
+                      style={{ padding: '2px 8px', fontSize: '11px', minHeight: '24px' }}
+                    >
+                      {t.admin.mark_resolved}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

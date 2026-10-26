@@ -4,6 +4,7 @@ import { useOffers } from '../hooks/useOffers';
 import { OfferCard } from '../components/OfferCard';
 import { api } from '../lib/api';
 import { UserSession } from '../firebase';
+import { useLanguage } from '../i18n/context';
 
 interface NgoFeedProps {
   user: UserSession;
@@ -12,18 +13,31 @@ interface NgoFeedProps {
 export const NgoFeed: React.FC<NgoFeedProps> = ({ user }) => {
   const { offers, loading, refresh } = useOffers(user.uid);
   const [successMsg, setSuccessMsg] = useState('');
+  const { t } = useLanguage();
 
   const activeOffers = offers.filter((o) => o.status === 'offered');
   const pastOffers = offers.filter((o) => o.status !== 'offered');
 
   const handleAccept = async (offerId: string) => {
+    try {
+      const overrides = JSON.parse(localStorage.getItem('foodbridge_offer_status_overrides') || '{}');
+      overrides[offerId] = 'accepted';
+      localStorage.setItem('foodbridge_offer_status_overrides', JSON.stringify(overrides));
+    } catch {}
+
     await api.acceptOffer(offerId, user.token);
-    setSuccessMsg('Offer accepted. Logistics dispatch initiated.');
+    setSuccessMsg(t.ngo.offer_accepted);
     refresh();
     setTimeout(() => setSuccessMsg(''), 5000);
   };
 
   const handleDecline = async (offerId: string, reason: string) => {
+    try {
+      const overrides = JSON.parse(localStorage.getItem('foodbridge_offer_status_overrides') || '{}');
+      overrides[offerId] = 'declined';
+      localStorage.setItem('foodbridge_offer_status_overrides', JSON.stringify(overrides));
+    } catch {}
+
     await api.declineOffer(offerId, reason, user.token);
     refresh();
   };
@@ -33,16 +47,16 @@ export const NgoFeed: React.FC<NgoFeedProps> = ({ user }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.025em', marginBottom: '3px' }}>
-            Recipient Offer Feed
+            {t.ngo.title}
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-            {user.name} &bull; Ranked by Spoilage-Aware Composite Scoring
+            {user.name} &bull; {t.ngo.subtitle}
           </p>
         </div>
 
         <button type="button" className="btn btn-secondary" onClick={refresh}>
           <RefreshCw size={13} />
-          <span>Refresh</span>
+          <span>{t.ngo.refresh}</span>
         </button>
       </div>
 
@@ -69,7 +83,7 @@ export const NgoFeed: React.FC<NgoFeedProps> = ({ user }) => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-          Checking active offers...
+          {t.ngo.checking_offers}
         </div>
       ) : activeOffers.length === 0 ? (
         <div style={{ padding: '64px 24px', textAlign: 'center', maxWidth: '460px', margin: '40px auto' }}>
@@ -89,16 +103,16 @@ export const NgoFeed: React.FC<NgoFeedProps> = ({ user }) => {
             <HeartHandshake size={18} />
           </div>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
-            No Pending Surplus Offers
+            {t.ngo.no_offers_title}
           </h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
-            When nearby caterers post surplus food matching your capacity and dietary restrictions, cascading allocations will appear here in real time.
+            {t.ngo.no_offers_desc}
           </p>
         </div>
       ) : (
         <div style={{ marginBottom: '32px' }}>
           <div className="inset-section-label">
-            Pending Offers ({activeOffers.length})
+            {t.ngo.pending_offers} ({activeOffers.length})
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -118,7 +132,7 @@ export const NgoFeed: React.FC<NgoFeedProps> = ({ user }) => {
       {pastOffers.length > 0 && (
         <div style={{ marginTop: '32px' }}>
           <div className="inset-section-label">
-            Resolved Offers ({pastOffers.length})
+            {t.ngo.resolved_offers} ({pastOffers.length})
           </div>
 
           <div className="inset-table">
@@ -129,10 +143,10 @@ export const NgoFeed: React.FC<NgoFeedProps> = ({ user }) => {
               >
                 <div>
                   <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '13px' }}>
-                    Listing: <span style={{ fontFamily: 'var(--font-mono)' }}>{po.listing_id}</span>
+                    {t.ngo.listing}: <span style={{ fontFamily: 'var(--font-mono)' }}>{po.listing_id}</span>
                   </div>
                   <div className="tabular-numbers" style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                    Offered at {new Date(po.offered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {t.ngo.offered_at} {new Date(po.offered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
                 <span

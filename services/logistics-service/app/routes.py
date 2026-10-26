@@ -153,9 +153,29 @@ def log_handover(
 
     db.set_document("handovers", log_entry.id, log_entry.model_dump(mode="json"))
 
-    # Update listing status according to handover stage
+    # Update listing status according to handover stage — only if listing exists
     new_status = ListingStatus.PICKED_UP if payload.is_pickup else ListingStatus.COMPLETED
-    db.update_document("listings", payload.listing_id, {"status": new_status.value})
+    existing_listing = db.get_document("listings", payload.listing_id)
+    if existing_listing:
+        db.update_document("listings", payload.listing_id, {"status": new_status.value})
+    else:
+        logger.warning(f"Handover logged for listing {payload.listing_id} but no listing doc found — skipping status update")
+
+    # Update any assigned volunteer route stops in database
+    target_stop_type = "pickup" if payload.is_pickup else "delivery"
+    routes = db.query_collection("routes")
+    for r in routes:
+        stops = r.get("stops", [])
+        modified = False
+        for s in stops:
+            if s.get("listing_id") == payload.listing_id and s.get("stop_type") == target_stop_type:
+                s["completed"] = True
+                modified = True
+        if modified:
+            if all(s.get("completed", False) for s in stops):
+                r["status"] = "completed"
+            db.set_document("routes", r["id"], r)
+            logger.info(f"Updated route {r['id']} stop completed status in database")
 
     if not payload.is_pickup:
         # Final delivery completed: retrieve listing quantity to publish pickup.completed event
@@ -179,3 +199,28 @@ def log_handover(
         logger.info(f"Handover {handover_id} marked COMPLETED. Emitted 'pickup.completed'")
 
     return log_entry
+
+
+@router.post("/routes/{route_id}/stops/{stop_id}/complete")
+def complete_route_stop(route_id: str, stop_id: str) -> dict:
+    """Explicitly marks a specific stop as completed and persists it in the database."""
+    route_doc = db.get_document("routes", route_id)
+    if not route_doc:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+    stops = route_doc.get("stops", [])
+    found = False
+    for s in stops:
+        if s.get("stop_id") == stop_id:
+            s["completed"] = True
+            found = True
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Stop ID not found on route")
+
+    if all(s.get("completed", False) for s in stops):
+        route_doc["status"] = "completed"
+
+    db.set_document("routes", route_id, route_doc)
+    logger.info(f"Marked stop {stop_id} completed on route {route_id} in database")
+    return {"status": "success", "route_id": route_id, "stop_id": stop_id}

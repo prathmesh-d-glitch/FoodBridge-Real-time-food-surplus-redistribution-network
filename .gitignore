@@ -34,6 +34,8 @@ dist-ssr/
 .env.local
 .env.*.local
 *.log
+.foodbridge_db.json
+*.tmp
 
 # Firebase emulators
 .firebase/

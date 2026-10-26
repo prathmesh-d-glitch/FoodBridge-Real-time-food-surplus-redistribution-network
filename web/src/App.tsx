@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Layout } from './components/Layout';
 import { useAuth } from './hooks/useAuth';
 import { Language } from './i18n';
+import { LanguageProvider } from './i18n/context';
 import { DonorDashboard } from './pages/DonorDashboard';
 import { PostSurplus } from './pages/PostSurplus';
 import { NgoFeed } from './pages/NgoFeed';
@@ -12,10 +13,10 @@ import { AdminConsole } from './pages/AdminConsole';
 import { Login } from './pages/Login';
 
 export const App: React.FC = () => {
-  const { user, switchRole } = useAuth();
+  const { user, switchRole, logout } = useAuth();
   const [activePage, setActivePageState] = useState<string>(() => {
     const hash = window.location.hash.replace('#', '');
-    return hash || 'donor';
+    return hash || (user ? user.role : 'login');
   });
   const [language, setLanguage] = useState<Language>('en');
 
@@ -35,7 +36,32 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [activePage]);
 
+  const handleLogout = () => {
+    logout();
+    setActivePage('login');
+  };
+
   const renderContent = () => {
+    // Public routes that don't require login
+    if (activePage === 'map') {
+      return <LiveMapPage />;
+    }
+    if (activePage === 'impact') {
+      return <ImpactDashboard user={user || undefined} />;
+    }
+
+    // Explicit login page or not logged in
+    if (activePage === 'login' || !user) {
+      return (
+        <Login
+          onSuccess={(u) => {
+            setActivePage(u.role);
+          }}
+        />
+      );
+    }
+
+    // Protected role routes
     switch (activePage) {
       case 'donor':
         return <DonorDashboard user={user} onNavigatePost={() => setActivePage('post_surplus')} />;
@@ -51,36 +77,26 @@ export const App: React.FC = () => {
         return <NgoFeed user={user} />;
       case 'volunteer':
         return <VolunteerRoutePage user={user} />;
-      case 'map':
-        return <LiveMapPage />;
-      case 'impact':
-        return <ImpactDashboard user={user} />;
       case 'admin':
         return <AdminConsole user={user} />;
-      case 'login':
-        return (
-          <Login
-            onSelectUser={(u) => {
-              switchRole(u.role);
-              setActivePage(u.role);
-            }}
-          />
-        );
       default:
         return <DonorDashboard user={user} onNavigatePost={() => setActivePage('post_surplus')} />;
     }
   };
 
   return (
-    <Layout
-      activePage={activePage}
-      setActivePage={setActivePage}
-      language={language}
-      setLanguage={setLanguage}
-      user={user}
-      onSwitchRole={switchRole}
-    >
-      {renderContent()}
-    </Layout>
+    <LanguageProvider language={language} setLanguage={setLanguage}>
+      <Layout
+        activePage={activePage}
+        setActivePage={setActivePage}
+        language={language}
+        setLanguage={setLanguage}
+        user={user}
+        onSwitchRole={switchRole}
+        onLogout={handleLogout}
+      >
+        {renderContent()}
+      </Layout>
+    </LanguageProvider>
   );
 };
