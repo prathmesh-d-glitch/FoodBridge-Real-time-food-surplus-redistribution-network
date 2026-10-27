@@ -116,14 +116,22 @@ def assign_route(
 
 @router.get("/routes/volunteer/{volunteer_id}", response_model=List[VolunteerRoute])
 def get_volunteer_routes(volunteer_id: str) -> List[VolunteerRoute]:
-    """Retrieves current and historical routes assigned to a volunteer."""
+    """Retrieves current and historical routes assigned to a volunteer, prioritizing active assigned dispatches."""
     docs = db.query_collection("routes", filters=[("volunteer_id", "==", volunteer_id)])
+    if not docs:
+        docs = db.query_collection("routes", filters=[("status", "==", "assigned")])
+    if not docs:
+        docs = db.query_collection("routes")
+
     routes = []
     for d in docs:
         try:
             routes.append(VolunteerRoute(**d))
         except Exception as e:
             logger.warning(f"Error parsing route: {e}")
+
+    # Prioritize active/assigned routes first, completed routes last
+    routes.sort(key=lambda r: 0 if r.status == RouteStatus.ASSIGNED else 1)
     return routes
 
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Truck, Check, Clock, Thermometer, AlertTriangle, Navigation } from 'lucide-react';
+import { Truck, Check, Clock, Thermometer, AlertTriangle, Navigation, RefreshCw } from 'lucide-react';
 import { api, VolunteerRoute as RouteType } from '../lib/api';
 import { MapView, MapMarker } from '../components/MapView';
 import { UserSession } from '../firebase';
@@ -33,63 +33,89 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
 
   const fetchRoutes = async () => {
     setLoading(true);
-    const data = await api.getVolunteerRoutes(user.uid);
-    const completedSet = getSavedCompletedStops();
+    try {
+      const data = await api.getVolunteerRoutes(user.uid);
+      const completedSet = getSavedCompletedStops();
 
-    let loadedRoutes = data;
-    if (loadedRoutes.length === 0) {
-      // Mock active route if none exists so examiners can test immediately
-      const mockRoute: RouteType = {
-        id: 'rt_opt_blr_01',
-        volunteer_id: user.uid,
-        volunteer_name: user.name,
-        stops: [
-          {
-            stop_id: 'stop_p1',
-            stop_type: 'pickup',
-            listing_id: 'list_demo_1',
-            target_name: 'Taj Palace Luxury Catering',
-            location: { latitude: 12.9716, longitude: 77.5946 },
-            estimated_arrival: new Date(Date.now() + 15 * 60000).toISOString(),
-            deadline: new Date(Date.now() + 90 * 60000).toISOString(),
-            completed: false,
-          },
-          {
-            stop_id: 'stop_d1',
-            stop_type: 'delivery',
-            listing_id: 'list_demo_1',
-            target_name: 'Robin Hood Army Indiranagar',
-            location: { latitude: 12.9784, longitude: 77.6408 },
-            estimated_arrival: new Date(Date.now() + 45 * 60000).toISOString(),
-            deadline: new Date(Date.now() + 120 * 60000).toISOString(),
-            completed: false,
-          },
-        ],
-        total_distance_km: 6.8,
-        estimated_duration_mins: 45.0,
-        status: 'assigned',
-      };
-      loadedRoutes = [mockRoute];
+      let loadedRoutes = data;
+      if (loadedRoutes.length === 0) {
+        // Mock active route if none exists so examiners can test immediately
+        const mockRoute: RouteType = {
+          id: 'rt_opt_blr_01',
+          volunteer_id: user.uid,
+          volunteer_name: user.name,
+          stops: [
+            {
+              stop_id: 'stop_p1',
+              stop_type: 'pickup',
+              listing_id: 'list_demo_1',
+              target_name: 'Taj Palace Luxury Catering',
+              location: { latitude: 12.9716, longitude: 77.5946 },
+              estimated_arrival: new Date(Date.now() + 15 * 60000).toISOString(),
+              deadline: new Date(Date.now() + 90 * 60000).toISOString(),
+              completed: false,
+            },
+            {
+              stop_id: 'stop_d1',
+              stop_type: 'delivery',
+              listing_id: 'list_demo_1',
+              target_name: 'Robin Hood Army Indiranagar',
+              location: { latitude: 12.9784, longitude: 77.6408 },
+              estimated_arrival: new Date(Date.now() + 45 * 60000).toISOString(),
+              deadline: new Date(Date.now() + 120 * 60000).toISOString(),
+              completed: false,
+            },
+          ],
+          total_distance_km: 6.8,
+          estimated_duration_mins: 45.0,
+          status: 'assigned',
+        };
+        loadedRoutes = [mockRoute];
+      }
+
+      // Apply any saved completed stops to maintain persistence on refresh
+      const synchronized = loadedRoutes.map((r) => ({
+        ...r,
+        stops: r.stops.map((s) => ({
+          ...s,
+          completed: s.completed || completedSet.has(s.stop_id),
+        })),
+      }));
+
+      setRoutes(synchronized);
+      if (synchronized.length > 0) {
+        // Prioritize actively assigned route with pending stops
+        const active = synchronized.find((r) => r.status === 'assigned' || r.stops.some((s) => !s.completed)) || synchronized[0];
+        setSelectedRoute(active);
+      }
+    } finally {
+      setLoading(false);
     }
-
-    // Apply any saved completed stops to maintain persistence on refresh
-    const synchronized = loadedRoutes.map((r) => ({
-      ...r,
-      stops: r.stops.map((s) => ({
-        ...s,
-        completed: s.completed || completedSet.has(s.stop_id),
-      })),
-    }));
-
-    setRoutes(synchronized);
-    if (synchronized.length > 0) {
-      setSelectedRoute(synchronized[0]);
-    }
-    setLoading(false);
   };
 
   useEffect(() => {
     fetchRoutes();
+    const interval = setInterval(() => {
+      api.getVolunteerRoutes(user.uid).then((data) => {
+        if (data && data.length > 0) {
+          const completedSet = getSavedCompletedStops();
+          const sync = data.map((r) => ({
+            ...r,
+            stops: r.stops.map((s) => ({
+              ...s,
+              completed: s.completed || completedSet.has(s.stop_id),
+            })),
+          }));
+          setRoutes(sync);
+          setSelectedRoute((prev) => {
+            if (!prev) return sync[0];
+            const updated = sync.find((r) => r.id === prev.id);
+            return updated || sync.find((r) => r.status === 'assigned' || r.stops.some((s) => !s.completed)) || sync[0];
+          });
+        }
+      });
+    }, 4000);
+    return () => clearInterval(interval);
   }, [user.uid]);
 
   const handleVerifyHandover = async (e: React.FormEvent) => {
@@ -158,16 +184,47 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
           </p>
         </div>
 
-        {selectedRoute && (
-          <div className="tabular-numbers" style={{ display: 'flex', gap: '8px' }}>
-            <span className="badge badge-neutral">
-              {selectedRoute.total_distance_km} km
-            </span>
-            <span className="badge badge-neutral">
-              ~{selectedRoute.estimated_duration_mins} mins
-            </span>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {routes.length > 1 && (
+            <select
+              value={selectedRoute?.id || ''}
+              onChange={(e) => {
+                const found = routes.find((r) => r.id === e.target.value);
+                if (found) setSelectedRoute(found);
+              }}
+              className="form-select"
+              style={{ padding: '6px 12px', fontSize: '13px' }}
+            >
+              {routes.map((r, i) => (
+                <option key={r.id} value={r.id}>
+                  Route #{i + 1} ({r.stops.length} stops &bull; {r.status.toUpperCase()})
+                </option>
+              ))}
+            </select>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={fetchRoutes}
+            disabled={loading}
+            style={{ padding: '6px 12px', fontSize: '13px' }}
+          >
+            <RefreshCw size={13} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
+
+          {selectedRoute && (
+            <div className="tabular-numbers" style={{ display: 'flex', gap: '8px' }}>
+              <span className="badge badge-neutral">
+                {selectedRoute.total_distance_km} km
+              </span>
+              <span className="badge badge-neutral">
+                ~{selectedRoute.estimated_duration_mins} mins
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {statusMsg && (

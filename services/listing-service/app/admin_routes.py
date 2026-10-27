@@ -1,4 +1,5 @@
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 import urllib.request
@@ -13,6 +14,16 @@ db = get_firestore_client()
 
 VERIFICATIONS_COLLECTION = "verifications"
 ESCALATIONS_COLLECTION = "escalations"
+
+
+class PartnerApplicationRequest(BaseModel):
+    name: str
+    email: str
+    type: str  # "donor" or "ngo"
+    fssai_license: str
+    address: str
+    phone: Optional[str] = "+91 98765 00000"
+    password: Optional[str] = "1234"
 
 # Default pre-seeded verification requests if database collection is empty
 INITIAL_VERIFICATIONS = [
@@ -75,6 +86,39 @@ def _ensure_initial_admin_data():
     if not existing_esc:
         for e in INITIAL_ESCALATIONS:
             db.set_document(ESCALATIONS_COLLECTION, e["id"], e)
+
+
+@router.post("/verifications/apply")
+def apply_for_verification(payload: PartnerApplicationRequest) -> Dict[str, Any]:
+    """Allows a new donor or NGO to apply for verified partnership."""
+    req_id = f"req_{uuid.uuid4().hex[:8]}"
+    doc = {
+        "id": req_id,
+        "name": payload.name,
+        "email": payload.email.strip().lower(),
+        "type": payload.type.strip().lower(),
+        "fssai_license": payload.fssai_license,
+        "address": payload.address,
+        "phone": payload.phone,
+        "status": "pending",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db.set_document(VERIFICATIONS_COLLECTION, req_id, doc)
+
+    # Also register in user profiles as pending
+    user_uid = f"{payload.type.strip().lower()}_{uuid.uuid4().hex[:6]}"
+    user_doc = {
+        "uid": user_uid,
+        "email": payload.email.strip().lower(),
+        "name": payload.name,
+        "role": payload.type.strip().lower(),
+        "phone": payload.phone,
+        "verification_status": "pending",
+        "fssai_license": payload.fssai_license,
+    }
+    db.set_document("users", user_uid, user_doc)
+    logger.info(f"Registered partner application {req_id} for {payload.name} ({payload.email})")
+    return doc
 
 
 @router.get("/verifications")

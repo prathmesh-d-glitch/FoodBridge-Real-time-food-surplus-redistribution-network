@@ -91,18 +91,25 @@ class InMemoryEventBus(BaseEventBus):
         try:
             import requests
             _NOTIF = settings.NOTIFICATION_SERVICE_URL
+            _LOGISTICS = settings.LOGISTICS_SERVICE_URL
             _EVENT_MAP = {
-                "listing.created": (settings.MATCHING_SERVICE_URL, "/events/listing-created"),
-                "pickup.completed": (settings.ANALYTICS_SERVICE_URL, "/events/pickup-completed"),
-                "match.offered": (_NOTIF, "/events/match-offered"),
-                "offer.accepted": (_NOTIF, "/events/offer-accepted"),
-                "route.assigned": (_NOTIF, "/events/route-assigned"),
-                "listing.expired": (_NOTIF, "/events/listing-expired"),
-                "admin.escalation_alert": (_NOTIF, "/events/admin-escalation"),
+                "listing.created": [(settings.MATCHING_SERVICE_URL, "/events/listing-created")],
+                "pickup.completed": [(settings.ANALYTICS_SERVICE_URL, "/events/pickup-completed")],
+                "match.offered": [(_NOTIF, "/events/match-offered")],
+                "offer.accepted": [
+                    (_NOTIF, "/events/offer-accepted"),
+                    (_LOGISTICS, "/events/offer-accepted"),
+                ],
+                "route.assigned": [(_NOTIF, "/events/route-assigned")],
+                "listing.expired": [(_NOTIF, "/events/listing-expired")],
+                "admin.escalation_alert": [(_NOTIF, "/events/admin-escalation")],
             }
             if topic in _EVENT_MAP:
-                base_url, path = _EVENT_MAP[topic]
-                requests.post(f"{base_url}{path}", json=msg.model_dump(mode="json"), timeout=1)
+                for base_url, path in _EVENT_MAP[topic]:
+                    try:
+                        requests.post(f"{base_url}{path}", json=msg.model_dump(mode="json"), timeout=1.5)
+                    except Exception as post_err:
+                        logger.debug(f"Webhook push to {base_url}{path} failed: {post_err}")
         except Exception:
             pass
 

@@ -36,13 +36,36 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [activePage]);
 
+  // Strict Role Route Guard: restricts each user role to their own pages + common pages (map, impact)
+  React.useEffect(() => {
+    if (!user) {
+      if (activePage !== 'login' && activePage !== 'map' && activePage !== 'impact') {
+        setActivePage('login');
+      }
+      return;
+    }
+
+    const allowedPagesByRole: Record<string, string[]> = {
+      donor: ['donor', 'post_surplus', 'map', 'impact'],
+      ngo: ['ngo', 'map', 'impact'],
+      volunteer: ['volunteer', 'map', 'impact'],
+      admin: ['admin', 'map', 'impact'],
+    };
+
+    const allowed = allowedPagesByRole[user.role] || ['map', 'impact'];
+    if (!allowed.includes(activePage)) {
+      // Automatically redirect to their assigned primary view
+      setActivePage(user.role);
+    }
+  }, [user?.role, activePage]);
+
   const handleLogout = () => {
     logout();
     setActivePage('login');
   };
 
   const renderContent = () => {
-    // Public routes that don't require login
+    // Common public views accessible by any account type and guests
     if (activePage === 'map') {
       return <LiveMapPage />;
     }
@@ -50,7 +73,7 @@ export const App: React.FC = () => {
       return <ImpactDashboard user={user || undefined} />;
     }
 
-    // Explicit login page or not logged in
+    // Explicit login page or guest state
     if (activePage === 'login' || !user) {
       return (
         <Login
@@ -61,27 +84,47 @@ export const App: React.FC = () => {
       );
     }
 
-    // Protected role routes
+    // Role-specific views: strictly render only if authenticated user role matches
     switch (activePage) {
       case 'donor':
-        return <DonorDashboard user={user} onNavigatePost={() => setActivePage('post_surplus')} />;
+        if (user.role === 'donor') {
+          return <DonorDashboard user={user} onNavigatePost={() => setActivePage('post_surplus')} />;
+        }
+        break;
       case 'post_surplus':
-        return (
-          <PostSurplus
-            user={user}
-            onSuccess={() => setActivePage('donor')}
-            onCancel={() => setActivePage('donor')}
-          />
-        );
+        if (user.role === 'donor') {
+          return (
+            <PostSurplus
+              user={user}
+              onSuccess={() => setActivePage('donor')}
+              onCancel={() => setActivePage('donor')}
+            />
+          );
+        }
+        break;
       case 'ngo':
-        return <NgoFeed user={user} />;
+        if (user.role === 'ngo') {
+          return <NgoFeed user={user} />;
+        }
+        break;
       case 'volunteer':
-        return <VolunteerRoutePage user={user} />;
+        if (user.role === 'volunteer') {
+          return <VolunteerRoutePage user={user} />;
+        }
+        break;
       case 'admin':
-        return <AdminConsole user={user} />;
-      default:
-        return <DonorDashboard user={user} onNavigatePost={() => setActivePage('post_surplus')} />;
+        if (user.role === 'admin') {
+          return <AdminConsole user={user} />;
+        }
+        break;
     }
+
+    // Safe fallback: default to user's assigned role page
+    if (user.role === 'donor') return <DonorDashboard user={user} onNavigatePost={() => setActivePage('post_surplus')} />;
+    if (user.role === 'ngo') return <NgoFeed user={user} />;
+    if (user.role === 'volunteer') return <VolunteerRoutePage user={user} />;
+    if (user.role === 'admin') return <AdminConsole user={user} />;
+    return <LiveMapPage />;
   };
 
   return (

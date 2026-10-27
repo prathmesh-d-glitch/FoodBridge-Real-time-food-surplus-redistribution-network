@@ -5,6 +5,7 @@ import {
   getSavedUserSession,
   PRESET_USERS,
   saveUserSession,
+  TEST_ACCOUNTS,
   UserSession,
 } from '../firebase';
 
@@ -14,7 +15,8 @@ export interface AuthContextType {
   login: (email: string, password: string) => UserSession;
   loginWithPreset: (email: string) => UserSession;
   logout: () => void;
-  switchRole: (role: 'donor' | 'ngo' | 'volunteer' | 'admin') => void;
+  switchRole: (role: string) => void;
+  switchAccount: (email: string) => UserSession;
   isAuthenticated: boolean;
 }
 
@@ -47,12 +49,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const switchRole = (role: 'donor' | 'ngo' | 'volunteer' | 'admin') => {
-    const newSession = PRESET_USERS[role];
+  const switchRole = (roleOrEmail: string) => {
+    const normalized = roleOrEmail.trim().toLowerCase();
+    if (TEST_ACCOUNTS[normalized]) {
+      login(normalized, '1234');
+      return;
+    }
+    const newSession = PRESET_USERS[normalized] || PRESET_USERS.donor;
     if (newSession) {
       setUser(newSession);
       saveUserSession(newSession);
     }
+  };
+
+  const switchAccount = (email: string): UserSession => {
+    return login(email, '1234');
   };
 
   return (
@@ -64,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithPreset,
         logout,
         switchRole,
+        switchAccount,
         isAuthenticated: !!user,
       }}
     >

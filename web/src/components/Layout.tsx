@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Language, getTranslation } from '../i18n';
 import { useLanguage } from '../i18n/context';
-import { UserSession } from '../firebase';
+import { TEST_ACCOUNTS, UserSession } from '../firebase';
 import { getCurrentLocationWithPlaceName, formatCoordinates } from '../lib/geo';
 
 interface LayoutProps {
@@ -27,7 +27,7 @@ interface LayoutProps {
   language: Language;
   setLanguage: (lang: Language) => void;
   user: UserSession | null;
-  onSwitchRole: (role: 'donor' | 'ngo' | 'volunteer' | 'admin') => void;
+  onSwitchRole: (roleOrEmail: string) => void;
   onLogout?: () => void;
 }
 
@@ -51,14 +51,21 @@ export const Layout: React.FC<LayoutProps> = ({
   const [locating, setLocating] = useState(false);
   const [locationPillSuccess, setLocationPillSuccess] = useState(false);
 
-  const navItems = [
-    { id: 'donor', label: t.nav.donor, icon: <UtensilsCrossed size={13} /> },
-    { id: 'ngo', label: t.nav.ngo, icon: <HeartHandshake size={13} /> },
-    { id: 'volunteer', label: t.nav.volunteer, icon: <Truck size={13} /> },
+  // Role-specific navigation items: each role sees ONLY their own page + common details (Map & Impact)
+  const roleNavMap: Record<string, { id: string; label: string; icon: React.ReactNode }> = {
+    donor: { id: 'donor', label: t.nav.donor, icon: <UtensilsCrossed size={13} /> },
+    ngo: { id: 'ngo', label: t.nav.ngo, icon: <HeartHandshake size={13} /> },
+    volunteer: { id: 'volunteer', label: t.nav.volunteer, icon: <Truck size={13} /> },
+    admin: { id: 'admin', label: t.nav.admin, icon: <ShieldAlert size={13} /> },
+  };
+
+  const commonNavItems = [
     { id: 'map', label: t.nav.map, icon: <Map size={13} /> },
     { id: 'impact', label: t.nav.impact, icon: <BarChart3 size={13} /> },
-    { id: 'admin', label: t.nav.admin, icon: <ShieldAlert size={13} /> },
   ];
+
+  const roleItem = user?.role ? roleNavMap[user.role] : null;
+  const navItems = roleItem ? [roleItem, ...commonNavItems] : commonNavItems;
 
   const currentTab = activePage === 'post_surplus' ? 'donor' : activePage;
 
@@ -85,7 +92,7 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Brand Lockup */}
         <div
           style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setActivePage('donor')}
+          onClick={() => setActivePage(user ? user.role : 'map')}
         >
           <div
             style={{
@@ -106,7 +113,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </span>
         </div>
 
-        {/* Segmented Navigation Bar */}
+        {/* Segmented Navigation Bar - strictly scoped to current account type + common details */}
         <nav className="segmented-nav">
           {navItems.map((item) => (
             <button
@@ -198,28 +205,56 @@ export const Layout: React.FC<LayoutProps> = ({
           {/* User Session Profile & Controls */}
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {/* Role Switcher Pill */}
+              {/* Active Account Pill & Quick Switcher */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px',
+                  gap: '6px',
                   background: 'rgba(0, 0, 0, 0.04)',
                   padding: '3px 8px',
                   borderRadius: '6px',
                 }}
               >
-                <User size={12} color="var(--accent-primary)" />
-                <select
-                  value={user.role}
-                  onChange={(e) => {
-                    const newRole = e.target.value as any;
-                    onSwitchRole(newRole);
-                    if (newRole === 'donor') setActivePage('donor');
-                    if (newRole === 'ngo') setActivePage('ngo');
-                    if (newRole === 'volunteer') setActivePage('volunteer');
-                    if (newRole === 'admin') setActivePage('admin');
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    color:
+                      user.role === 'admin'
+                        ? '#5856d6'
+                        : user.role === 'donor'
+                        ? 'var(--accent-primary)'
+                        : user.role === 'ngo'
+                        ? '#0071e3'
+                        : '#b25e00',
+                    background:
+                      user.role === 'admin'
+                        ? 'rgba(88, 86, 214, 0.12)'
+                        : user.role === 'donor'
+                        ? 'rgba(27, 122, 67, 0.12)'
+                        : user.role === 'ngo'
+                        ? 'rgba(0, 113, 227, 0.12)'
+                        : 'rgba(178, 94, 0, 0.12)',
                   }}
+                >
+                  {user.role}
+                </span>
+                <select
+                  value={user.email}
+                  onChange={(e) => {
+                    const newEmail = e.target.value;
+                    onSwitchRole(newEmail);
+                    const acc = TEST_ACCOUNTS[newEmail];
+                    if (acc) {
+                      setActivePage(acc.role);
+                    }
+                  }}
+                  title="Switch logged in account"
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -229,13 +264,25 @@ export const Layout: React.FC<LayoutProps> = ({
                     outline: 'none',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
-                    textTransform: 'capitalize',
                   }}
                 >
-                  <option value="admin">Admin ({user.email})</option>
-                  <option value="donor">Donor (donor@gmail.com)</option>
-                  <option value="ngo">NGO (ngo@gmail.com)</option>
-                  <option value="volunteer">Volunteer (volunteer@gmail.com)</option>
+                  <optgroup label="── NGOs / Food Banks ──">
+                    <option value="ngo@gmail.com">ngo@gmail.com [Robin Hood Army - NGO]</option>
+                    <option value="kitchen@koramangala.org">kitchen@koramangala.org [Koramangala Kitchen - NGO]</option>
+                    <option value="hasiru@feeding.org">hasiru@feeding.org [Hasiru Dala - NGO]</option>
+                  </optgroup>
+                  <optgroup label="── Donors / Caterers ──">
+                    <option value="donor@gmail.com">donor@gmail.com [Taj Palace - Donor]</option>
+                    <option value="grand@banquets.com">grand@banquets.com [Grand Banquets - Donor]</option>
+                    <option value="itc@gardenia.com">itc@gardenia.com [ITC Gardenia - Donor]</option>
+                  </optgroup>
+                  <optgroup label="── Volunteer Couriers ──">
+                    <option value="volunteer@gmail.com">volunteer@gmail.com [Arun Kumar - Volunteer]</option>
+                    <option value="priya@courier.org">priya@courier.org [Priya Sharma - Volunteer]</option>
+                  </optgroup>
+                  <optgroup label="── System Administration ──">
+                    <option value="admin@gmail.com">admin@gmail.com [System Administrator - Admin]</option>
+                  </optgroup>
                 </select>
               </div>
 
