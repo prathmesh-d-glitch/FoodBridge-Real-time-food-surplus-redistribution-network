@@ -1,6 +1,9 @@
 import json
 import os
 import re
+import base64
+import urllib.request
+import urllib.error
 from typing import Optional
 from shared.config import settings
 from shared.logging_setup import setup_logger
@@ -8,96 +11,80 @@ from shared.models import PhotoAnalysisResult
 
 logger = setup_logger("vision_service")
 
+# Use REST API directly for Gemini models
+GEMINI_REST_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_MODEL = "gemini-3-flash-preview"
 
-def heuristic_fallback_analysis(
-    photo_hint: Optional[str] = None,
-    image_bytes: Optional[bytes] = None,
-) -> PhotoAnalysisResult:
-    """Deterministic, rule-based fallback when Gemini API key is absent or unreachable.
-    Evaluates text keywords and food indicators to assign realistic categories and safety flags.
-    """
-    hint = (photo_hint or "").lower()
 
-    if any(k in hint for k in ["bread", "roti", "naan", "bun", "cake", "pastry"]):
-        food_type = "Bakery & Breads"
-        portions = 30
-        shelf_life_hours = 24.0
-        safety_flags = ["Keep sealed in dry ambient storage", "Inspect for moisture damage"]
-    elif any(k in hint for k in ["fruit", "vegetable", "salad", "apple", "banana"]):
-        food_type = "Fresh Produce"
-        portions = 25
-        shelf_life_hours = 36.0
-        safety_flags = ["Wash thoroughly before consumption", "Discard bruised items"]
-    elif any(k in hint for k in ["milk", "paneer", "yogurt", "curd", "cheese"]):
-        food_type = "Dairy Products"
-        portions = 20
-        shelf_life_hours = 8.0
-        safety_flags = ["Maintain refrigerated below 5°C", "Perform sniff/curdle test"]
-    elif any(k in hint for k in ["sweet", "dessert", "gulab jamun", "halwa", "kheer"]):
-        food_type = "Sweets & Desserts"
-        portions = 40
-        shelf_life_hours = 12.0
-        safety_flags = ["Keep covered", "Consume within 12 hours of preparation"]
-    else:
-        # Default cooked meals / bulk catering
-        food_type = "Cooked Catering Meals (Rice/Curry/Entrees)"
-        portions = 45
-        shelf_life_hours = 4.0
-        safety_flags = [
-            "Hot holding verified above 63°C recommended",
-            "Consume within 3-4 hours of preparation",
-            "Ensure sealed stainless steel or food-grade containers",
-        ]
+def _call_gemini_rest(api_key: str, prompt: str, image_bytes: Optional[bytes] = None) -> str:
+    """Calls Gemini REST API directly. Returns the generated text."""
+    url = GEMINI_REST_URL.format(model=GEMINI_MODEL)
 
-    return PhotoAnalysisResult(
-        food_type=food_type,
-        estimated_portions=portions,
-        shelf_life_hours_hint=shelf_life_hours,
-        safety_flags=safety_flags,
-        confidence=0.82,
-        source="heuristic_fallback",
+    parts = [{"text": prompt}]
+    if image_bytes:
+        b64_data = base64.b64encode(image_bytes).decode("utf-8")
+        parts.append({
+            "inline_data": {
+                "mime_type": "image/jpeg",
+                "data": b64_data,
+            }
+        })
+
+    body = json.dumps({
+        "contents": [{"parts": parts}]
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key,
+        },
+        method="POST",
     )
+
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+
+    return data["candidates"][0]["content"]["parts"][0]["text"]
 
 
 def analyze_food_photo(
     image_bytes: Optional[bytes] = None,
     photo_url: Optional[str] = None,
     photo_hint: Optional[str] = None,
-) -> PhotoAnalysisResult:
-    """Analyzes a food surplus photo using Google Gemini API with graceful heuristic fallback."""
+) -> Optional[PhotoAnalysisResult]:
+    """Analyzes a food surplus photo using Google Gemini.
+    Returns None if API key is missing or Gemini call fails — no rule-based fallback.
+    """
     api_key = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
 
-    # If no Gemini API key provided, degrade gracefully to rule-based engine
     if not api_key:
-        logger.info("No GEMINI_API_KEY detected. Using deterministic rule-based vision engine.")
-        return heuristic_fallback_analysis(photo_hint, image_bytes)
+        logger.warning("No GEMINI_API_KEY set. AI analysis disabled.")
+        return None
 
     try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-
         prompt = (
-            "Analyze this food surplus image for an NGO redistribution platform. "
-            "Output strictly valid JSON with the following schema: "
-            '{"food_type": string, "estimated_portions": integer, '
-            '"shelf_life_hours_hint": float, "safety_flags": [string], "confidence": float}. '
-            "Safety flags must highlight any perishable risks, temperature controls, or hygiene cautions. "
-            f"User context hint: {photo_hint or 'None'}"
+            "Analyze this food surplus for an NGO food redistribution platform. "
+            "Output ONLY strictly valid JSON with no markdown, no code blocks, no explanation. "
+            "Use this exact schema: "
+            '{"food_type": "string", "estimated_portions": integer, '
+            '"shelf_life_hours_hint": float, "safety_flags": ["string"], "confidence": float}. '
+            "confidence must be between 0.0 and 1.0. "
+            "safety_flags must highlight perishable risks, temperature controls, or hygiene cautions. "
+            f"User context hint: {photo_hint or 'food surplus donation'}"
         )
 
-        content_parts = [prompt]
-        if image_bytes:
-            content_parts.append({
-                "mime_type": "image/jpeg",
-                "data": image_bytes,
-            })
+        text = _call_gemini_rest(api_key, prompt, image_bytes)
+        logger.info(f"Gemini raw response: {text[:200]}")
 
-        response = model.generate_content(content_parts)
-        text = response.text.strip()
+        # Extract JSON — strip markdown code blocks if model wraps in them
+        text = text.strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```[a-z]*\n?", "", text)
+            text = re.sub(r"\n?```$", "", text.strip())
 
-        # Extract JSON from code blocks if present
         json_match = re.search(r"\{.*\}", text, re.DOTALL)
         if json_match:
             data = json.loads(json_match.group(0))
@@ -111,8 +98,12 @@ def analyze_food_photo(
             )
         else:
             logger.warning(f"Could not parse JSON from Gemini response: {text}")
-            return heuristic_fallback_analysis(photo_hint, image_bytes)
+            return None
 
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        logger.error(f"Gemini API HTTP {e.code}: {body[:300]}", exc_info=False)
+        return None
     except Exception as e:
-        logger.error(f"Gemini API invocation failed ({e}); falling back to heuristic engine", exc_info=True)
-        return heuristic_fallback_analysis(photo_hint, image_bytes)
+        logger.error(f"Gemini API invocation failed: {e}", exc_info=True)
+        return None

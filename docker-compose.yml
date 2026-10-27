@@ -33,6 +33,7 @@ services:
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
       - GCP_PROJECT_ID=foodbridge-dev
       - MATCHING_SERVICE_URL=http://matching-service:8002
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       - firestore-emulator
       - pubsub-emulator

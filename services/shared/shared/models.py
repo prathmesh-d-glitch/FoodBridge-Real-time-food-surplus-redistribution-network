@@ -149,6 +149,14 @@ class Offer(BaseModel):
     expires_at: datetime
     responded_at: Optional[datetime] = None
     decline_reason: Optional[str] = None
+    # Listing snapshot — denormalised for NGO Feed display
+    listing_title: Optional[str] = None
+    listing_donor_name: Optional[str] = None
+    listing_quantity_kg: Optional[float] = None
+    listing_portions: Optional[int] = None
+    listing_storage_condition: Optional[str] = None
+    listing_safe_until: Optional[datetime] = None
+    listing_photo_analysis: Optional[PhotoAnalysisResult] = None
 
 
 class HandoverLog(BaseModel):

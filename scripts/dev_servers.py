@@ -1,5 +1,4 @@
 import os
-import signal
 import subprocess
 import sys
 import time
@@ -18,12 +17,27 @@ try:
 except Exception as e:
     print(f"Warning seeding database: {e}")
 
-# 2. Launch each microservice with cwd set to its directory
+# 2. Load root .env into env dict
+env = os.environ.copy()
+env_file = root_dir / ".env"
+if env_file.exists():
+    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip()
+            if k and v:
+                env[k] = v  # .env always wins over os.environ
+
+
+# 3. Launch each microservice with cwd set to its directory
 services = [
     ("listing-service", 8001),
     ("matching-service", 8002),
+    ("notification-service", 8003),
     ("logistics-service", 8004),
     ("analytics-service", 8005),
+    ("expiry-job", 8006),
 ]
 
 processes = []
@@ -46,12 +60,15 @@ for name, port in services:
         "--log-level",
         "warning",
     ]
-    env = os.environ.copy()
-    env["PYTHONPATH"] = f"{service_path};{root_dir / 'services' / 'shared'}"
-    p = subprocess.Popen(cmd, cwd=str(service_path), env=env)
+    svc_env = env.copy()
+    svc_env["PYTHONPATH"] = f"{service_path};{root_dir / 'services' / 'shared'}"
+    p = subprocess.Popen(cmd, cwd=str(service_path), env=svc_env)
     processes.append((name, p))
     print(f"  [RUNNING] {name} on http://127.0.0.1:{port}")
 
+gemini_status = "[OK]" if env.get("GEMINI_API_KEY") else "[MISSING] -- set GEMINI_API_KEY in .env"
+print("==================================================================")
+print(f"  Gemini AI key loaded: {gemini_status}")
 print("==================================================================")
 print("Press Ctrl+C to terminate all services.")
 

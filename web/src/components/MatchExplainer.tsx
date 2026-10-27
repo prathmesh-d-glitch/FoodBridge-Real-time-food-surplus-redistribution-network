@@ -44,11 +44,11 @@ export const MatchExplainer: React.FC<MatchExplainerProps> = ({ score, breakdown
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="tabular-numbers" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {(score * 100).toFixed(0)}% Compatibility Fit
+          <span className="tabular-numbers" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            {(score * 100).toFixed(0)}/100 Composite Match Score
           </span>
-          <span style={{ fontSize: '11.5px', color: 'var(--accent-primary)', fontWeight: 500 }}>
-            &bull; Rank #{rank} Choice
+          <span style={{ fontSize: '11.5px', color: 'var(--accent-primary)', fontWeight: 600 }}>
+            &bull; Rank #{rank}
           </span>
         </div>
         <button

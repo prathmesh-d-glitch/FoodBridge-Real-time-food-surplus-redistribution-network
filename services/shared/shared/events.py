@@ -90,10 +90,19 @@ class InMemoryEventBus(BaseEventBus):
         # Emulate Cloud Run Pub/Sub Push subscriptions via local HTTP webhooks
         try:
             import requests
-            if topic == "listing.created":
-                requests.post(f"{settings.MATCHING_SERVICE_URL}/events/listing-created", json=msg.model_dump(mode="json"), timeout=1)
-            elif topic == "pickup.completed":
-                requests.post(f"{settings.ANALYTICS_SERVICE_URL}/events/pickup-completed", json=msg.model_dump(mode="json"), timeout=1)
+            _NOTIF = settings.NOTIFICATION_SERVICE_URL
+            _EVENT_MAP = {
+                "listing.created": (settings.MATCHING_SERVICE_URL, "/events/listing-created"),
+                "pickup.completed": (settings.ANALYTICS_SERVICE_URL, "/events/pickup-completed"),
+                "match.offered": (_NOTIF, "/events/match-offered"),
+                "offer.accepted": (_NOTIF, "/events/offer-accepted"),
+                "route.assigned": (_NOTIF, "/events/route-assigned"),
+                "listing.expired": (_NOTIF, "/events/listing-expired"),
+                "admin.escalation_alert": (_NOTIF, "/events/admin-escalation"),
+            }
+            if topic in _EVENT_MAP:
+                base_url, path = _EVENT_MAP[topic]
+                requests.post(f"{base_url}{path}", json=msg.model_dump(mode="json"), timeout=1)
         except Exception:
             pass
 

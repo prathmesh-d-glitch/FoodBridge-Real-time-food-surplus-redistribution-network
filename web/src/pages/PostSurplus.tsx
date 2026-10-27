@@ -47,6 +47,7 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
   // Gemini AI Analysis state
   const [analyzing, setAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -65,14 +66,26 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
 
   const triggerAiAnalysis = async (b64: string) => {
     setAnalyzing(true);
+    setAiError(null);
+    setAiResult(null);
     try {
       const res = await api.analyzePhoto(b64, title || 'Catering surplus');
-      setAiResult(res);
-      if (res.estimated_portions) {
-        setPortions(res.estimated_portions);
+      if (res && res.food_type) {
+        setAiResult(res);
+        if (res.estimated_portions) {
+          setPortions(res.estimated_portions);
+        }
+      } else {
+        setAiError('Gemini AI returned no result. Check that listing-service is running.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      // 503 = Gemini API key missing or call failed
+      if (err?.status === 503 || err?.response?.status === 503) {
+        setAiError('Gemini AI unavailable — GEMINI_API_KEY not set or invalid.');
+      } else {
+        setAiError('Could not reach listing-service (port 8001). Ensure dev_servers.py is running.');
+      }
     } finally {
       setAnalyzing(false);
     }
@@ -266,6 +279,23 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
                     Gemini 1.5 Flash analyzing visual spoilage indicators...
                   </span>
                 </div>
+              ) : aiError ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '16px',
+                    background: 'rgba(215, 0, 21, 0.06)',
+                    border: '1px solid rgba(215, 0, 21, 0.15)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '12px',
+                    color: 'var(--accent-red)',
+                  }}
+                >
+                  <AlertTriangle size={14} />
+                  <span>{aiError}</span>
+                </div>
               ) : aiResult ? (
                 <div
                   style={{
@@ -275,23 +305,36 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
                     borderRadius: 'var(--radius-sm)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  {/* Gemini AI Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                     <Sparkles size={14} color="var(--accent-primary)" />
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
-                      AI Inspection: {aiResult.source === 'gemini_multimodal' ? 'Gemini 1.5 Flash' : 'Rule Table Fallback'}
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {aiResult.source === 'gemini' ? 'Gemini AI' : 'Rule-Based'}
+                    </span>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      background: aiResult.confidence >= 0.85 ? 'rgba(27,122,67,0.15)' : 'rgba(200,140,0,0.13)',
+                      color: aiResult.confidence >= 0.85 ? 'var(--accent-primary)' : '#a07000',
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      border: `1px solid ${aiResult.confidence >= 0.85 ? 'rgba(27,122,67,0.25)' : 'rgba(200,140,0,0.2)'}`,
+                    }}>
+                      {Math.round(aiResult.confidence * 100)}% confidence
                     </span>
                   </div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    Identified: {aiResult.food_type}
+                  <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    {aiResult.food_type}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                    Recommended Shelf Life: <strong>{aiResult.shelf_life_hours_hint} hours</strong> (Confidence: {Math.round(aiResult.confidence * 100)}%)
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'flex', gap: '16px' }}>
+                    <span>🕒 Shelf life: <strong>{aiResult.shelf_life_hours_hint}h</strong></span>
+                    <span>🍽 Portions: <strong>{aiResult.estimated_portions}</strong> (auto-filled)</span>
                   </div>
                   {aiResult.safety_flags?.length > 0 && (
                     <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                       {aiResult.safety_flags.map((flag: string, i: number) => (
                         <span key={i} style={{ fontSize: '11px', background: 'rgba(27, 122, 67, 0.12)', color: 'var(--accent-primary)', padding: '2px 7px', borderRadius: '4px' }}>
-                          ✓ {flag.replace('_', ' ')}
+                          ✓ {flag}
                         </span>
                       ))}
                     </div>

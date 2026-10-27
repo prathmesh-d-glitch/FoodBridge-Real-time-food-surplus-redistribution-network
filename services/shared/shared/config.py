@@ -53,7 +53,13 @@ class Settings(BaseSettings):
     LOGISTICS_SERVICE_URL: str = Field(default="http://localhost:8004")
     ANALYTICS_SERVICE_URL: str = Field(default="http://localhost:8005")
 
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
+    model_config = SettingsConfigDict(
+        env_file=(
+            str(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")),
+            ".env",
+        ),
+        extra="allow",
+    )
 
 
 settings = Settings()

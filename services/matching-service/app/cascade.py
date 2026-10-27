@@ -110,6 +110,14 @@ class CascadeManager:
             response_timeout_seconds=timeout_sec,
             offered_at=now,
             expires_at=expires_at,
+            # Listing snapshot for NGO Feed display
+            listing_title=listing.title,
+            listing_donor_name=listing.donor_name,
+            listing_quantity_kg=listing.quantity_kg,
+            listing_portions=listing.portions,
+            listing_storage_condition=listing.storage_condition.value if listing.storage_condition else None,
+            listing_safe_until=listing.safe_until,
+            listing_photo_analysis=listing.photo_analysis,
         )
 
         # Save offer

@@ -1,0 +1,82 @@
+{
+  "scenario_name": "Full Demo - All Roles",
+  "description": "Complete end-to-end demo: Donor posts 3 types of surplus, NGO #1 declines (cascade), NGO #2 accepts, volunteer completes route and handover, admin monitors.",
+  "events": [
+    {
+      "event_type": "post_listing",
+      "delay_seconds": 2,
+      "data": {
+        "title": "Corporate Luncheon: Dal Makhani, Jeera Rice & Papad",
+        "description": "150-person IT company luncheon, hot-held at 72°C in sealed GN containers.",
+        "category": "cooked_meals",
+        "storage_condition": "hot_hold",
+        "dietary_type": "veg",
+        "quantity_kg": 35.0,
+        "portions": 100,
+        "prepared_minutes_ago": 60,
+        "location": {
+          "latitude": 12.9698,
+          "longitude": 77.7499,
+          "address": "Whitefield ITPL, Bangalore"
+        }
+      }
+    },
+    {
+      "event_type": "post_listing",
+      "delay_seconds": 3,
+      "data": {
+        "title": "Hotel Breakfast Buffet: Pastries, Eggs & Sandwiches",
+        "description": "5-star hotel breakfast buffet surplus. Chilled at 3°C.",
+        "category": "bakery_bread",
+        "storage_condition": "chilled",
+        "dietary_type": "non_veg",
+        "quantity_kg": 22.0,
+        "portions": 70,
+        "prepared_minutes_ago": 90,
+        "location": {
+          "latitude": 12.9592,
+          "longitude": 77.6974,
+          "address": "Koramangala, Bangalore"
+        }
+      }
+    },
+    {
+      "event_type": "post_listing",
+      "delay_seconds": 3,
+      "data": {
+        "title": "Fresh Fruit Basket: Seasonal Mangoes, Bananas & Guavas",
+        "description": "Corporate gifting leftover, whole fruit, ambient storage, untouched.",
+        "category": "raw_produce",
+        "storage_condition": "ambient",
+        "dietary_type": "vegan",
+        "quantity_kg": 15.0,
+        "portions": 45,
+        "prepared_minutes_ago": 120,
+        "location": {
+          "latitude": 12.9352,
+          "longitude": 77.6245,
+          "address": "HSR Layout, Bangalore"
+        }
+      }
+    },
+    {
+      "event_type": "simulate_ngo_response",
+      "delay_seconds": 5,
+      "target_ngo": "ngo_koramangala",
+      "action": "decline",
+      "reason": "At full capacity today — all volunteers already deployed"
+    },
+    {
+      "event_type": "simulate_ngo_response",
+      "delay_seconds": 4,
+      "target_ngo": "ngo_robin_hood",
+      "action": "accept"
+    },
+    {
+      "event_type": "simulate_handover",
+      "delay_seconds": 5,
+      "temperature_celsius": 66.5,
+      "notes": "Hot holding verified at 66.5°C. Sealed containers transferred. Both parties signed."
+    }
+  ]
+}

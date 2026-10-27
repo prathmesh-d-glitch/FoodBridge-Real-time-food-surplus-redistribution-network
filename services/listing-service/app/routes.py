@@ -57,11 +57,13 @@ def create_listing(
     photo_analysis: Optional[PhotoAnalysisResult] = None
     if payload.photo_base64:
         try:
-            raw_bytes = base64.b64decode(payload.photo_base64)
+            b64_str = payload.photo_base64
+            if "," in b64_str:
+                b64_str = b64_str.split(",", 1)[1]  # strip "data:image/jpeg;base64," prefix
+            raw_bytes = base64.b64decode(b64_str)
             photo_analysis = analyze_food_photo(image_bytes=raw_bytes, photo_hint=payload.title)
         except Exception as e:
             logger.warning(f"Could not decode photo_base64: {e}")
-            photo_analysis = analyze_food_photo(photo_hint=payload.title)
     elif payload.photo_url:
         photo_analysis = analyze_food_photo(photo_url=payload.photo_url, photo_hint=payload.title)
 
@@ -149,15 +151,16 @@ def update_status(
     return updated
 
 
-@router.post("/listings/analyze-photo", response_model=PhotoAnalysisResult)
+@router.post("/listings/analyze-photo")
 def analyze_photo_endpoint(
     payload: AnalyzePhotoRequest,
-) -> PhotoAnalysisResult:
-    """Dedicated endpoint for UI to test photo analysis and preview portion/shelf-life suggestions."""
+):
+    """Dedicated endpoint for UI to get Gemini AI photo analysis.
+    Returns 503 if Gemini API key is missing or call fails.
+    """
     raw_bytes = None
     if payload.photo_base64:
         try:
-            # Handle data URI prefix if present
             b64_str = payload.photo_base64
             if "," in b64_str:
                 b64_str = b64_str.split(",", 1)[1]
@@ -165,8 +168,17 @@ def analyze_photo_endpoint(
         except Exception as e:
             logger.warning(f"Error decoding photo: {e}")
 
-    return analyze_food_photo(
+    result = analyze_food_photo(
         image_bytes=raw_bytes,
         photo_url=payload.photo_url,
         photo_hint=payload.food_name_hint,
     )
+
+    if result is None:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini AI unavailable. Ensure GEMINI_API_KEY is set and valid.",
+        )
+
+    return result

@@ -122,6 +122,74 @@ def manual_send(payload: ManualNotificationRequest):
     return send_push_notification(payload.recipient_token, payload.title, payload.body)
 
 
+# ── Cross-process event push endpoints ──────────────────────────────────────
+# The InMemoryEventBus runs per-process. These HTTP endpoints allow other
+# microservices (matching, logistics, expiry-job) to fire notification events
+# cross-process by POSTing directly here — mirroring Cloud Pub/Sub push subs.
+
+def _extract_data(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalise both raw data and wrapped EventMessage payloads."""
+    return payload.get("data", payload)
+
+
+@app.post("/events/match-offered", status_code=202)
+def event_match_offered(payload: Dict[str, Any]):
+    """Pub/Sub push subscription for match.offered events."""
+    data = _extract_data(payload)
+    tmpl = template_match_offered(data)
+    ngo_id = data.get("ngo_id", "all_ngos")
+    send_push_notification(f"ngo_{ngo_id}", tmpl["title"], tmpl["body"], data=data)
+    get_sms_provider().send_sms("+919876543211", tmpl["sms"])
+    logger.info(f"match.offered processed for ngo={ngo_id}")
+    return {"status": "dispatched"}
+
+
+@app.post("/events/offer-accepted", status_code=202)
+def event_offer_accepted(payload: Dict[str, Any]):
+    """Pub/Sub push subscription for offer.accepted events."""
+    data = _extract_data(payload)
+    tmpl = template_offer_accepted(data)
+    donor_id = data.get("donor_id", "all_donors")
+    send_push_notification(f"donor_{donor_id}", tmpl["title"], tmpl["body"], data=data)
+    get_sms_provider().send_sms("+919876543210", tmpl["sms"])
+    logger.info(f"offer.accepted processed for donor={donor_id}")
+    return {"status": "dispatched"}
+
+
+@app.post("/events/route-assigned", status_code=202)
+def event_route_assigned(payload: Dict[str, Any]):
+    """Pub/Sub push subscription for route.assigned events."""
+    data = _extract_data(payload)
+    tmpl = template_route_assigned(data)
+    vol_id = data.get("volunteer_id", "all_volunteers")
+    send_push_notification(f"vol_{vol_id}", tmpl["title"], tmpl["body"], data=data)
+    get_sms_provider().send_sms("+919876543212", tmpl["sms"])
+    logger.info(f"route.assigned processed for volunteer={vol_id}")
+    return {"status": "dispatched"}
+
+
+@app.post("/events/listing-expired", status_code=202)
+def event_listing_expired(payload: Dict[str, Any]):
+    """Pub/Sub push subscription for listing.expired events."""
+    data = _extract_data(payload)
+    tmpl = template_listing_expired(data)
+    donor_id = data.get("donor_id", "all_donors")
+    send_push_notification(f"donor_{donor_id}", tmpl["title"], tmpl["body"], data=data)
+    logger.info(f"listing.expired processed for donor={donor_id}")
+    return {"status": "dispatched"}
+
+
+@app.post("/events/admin-escalation", status_code=202)
+def event_admin_escalation(payload: Dict[str, Any]):
+    """Pub/Sub push subscription for admin.escalation_alert events."""
+    data = _extract_data(payload)
+    tmpl = template_admin_escalation(data)
+    send_push_notification("topic:admin_alerts", tmpl["title"], tmpl["body"], data=data)
+    get_sms_provider().send_sms("+919876543213", tmpl["sms"])
+    logger.info("admin.escalation_alert processed")
+    return {"status": "dispatched"}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=settings.NOTIFICATION_SERVICE_PORT, reload=True)
