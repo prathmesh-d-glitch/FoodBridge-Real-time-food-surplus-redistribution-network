@@ -54,7 +54,7 @@ for name, port in services:
         "uvicorn",
         "app.main:app",
         "--host",
-        "127.0.0.1",
+        "0.0.0.0",
         "--port",
         str(port),
         "--log-level",

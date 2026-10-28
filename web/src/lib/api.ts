@@ -1,8 +1,9 @@
-const LISTING_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8001';
-const MATCHING_BASE = (import.meta as any).env?.VITE_MATCHING_URL || 'http://localhost:8002';
-const NOTIFICATION_BASE = (import.meta as any).env?.VITE_NOTIFICATION_URL || 'http://localhost:8003';
-const LOGISTICS_BASE = (import.meta as any).env?.VITE_LOGISTICS_URL || 'http://localhost:8004';
-const ANALYTICS_BASE = (import.meta as any).env?.VITE_ANALYTICS_URL || 'http://localhost:8005';
+const getHost = () => (typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost');
+const LISTING_BASE = (import.meta as any).env?.VITE_API_URL || `http://${getHost()}:8001`;
+const MATCHING_BASE = (import.meta as any).env?.VITE_MATCHING_URL || `http://${getHost()}:8002`;
+const NOTIFICATION_BASE = (import.meta as any).env?.VITE_NOTIFICATION_URL || `http://${getHost()}:8003`;
+const LOGISTICS_BASE = (import.meta as any).env?.VITE_LOGISTICS_URL || `http://${getHost()}:8004`;
+const ANALYTICS_BASE = (import.meta as any).env?.VITE_ANALYTICS_URL || `http://${getHost()}:8005`;
 
 export interface DonorListing {
   id: string;
