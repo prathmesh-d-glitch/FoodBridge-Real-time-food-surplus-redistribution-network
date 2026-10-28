@@ -53,10 +53,91 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
   const [regLoading, setRegLoading] = useState(false);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [cityFilter, setCityFilter] = useState<'all' | 'gwalior' | 'bangalore'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Full list of accounts across all roles with bracket names
   const testAccountsList = [
-    // ── NGOs ──
+    // ── Gwalior Regional Accounts ──
+    {
+      role: 'admin',
+      title: 'FoodBridge Gwalior Regional Admin [Gwalior Admin - Admin]',
+      email: 'gwalior.admin@gmail.com',
+      password: '1234',
+      badge: 'Gwalior Platform Ops',
+      badgeColor: '#5856d6',
+      desc: 'Gwalior district administration, partner verifications, and citywide escalations.',
+      icon: <Shield size={20} color="#5856d6" />,
+      account: TEST_ACCOUNTS['gwalior.admin@gmail.com'],
+    },
+    {
+      role: 'ngo',
+      title: 'Gwalior Annapurna Food Bank [Gwalior Annapurna - NGO]',
+      email: 'gwalior.annapurna.ngo@gmail.com',
+      password: '1234',
+      badge: 'Gwalior City Center Shelter',
+      badgeColor: '#0071e3',
+      desc: 'Rank #1 NGO in City Center Gwalior (300kg capacity, 97% reliability).',
+      icon: <HeartHandshake size={20} color="#0071e3" />,
+      account: TEST_ACCOUNTS['gwalior.annapurna.ngo@gmail.com'],
+    },
+    {
+      role: 'ngo',
+      title: 'Gwalior Robin Hood Relief [Gwalior Relief - NGO]',
+      email: 'gwalior.relief.ngo@gmail.com',
+      password: '1234',
+      badge: 'Gwalior Morar Hub',
+      badgeColor: '#0071e3',
+      desc: 'Rank #2 NGO in Morar Gwalior. Cascaded surplus receiver for eastern sector.',
+      icon: <HeartHandshake size={20} color="#0071e3" />,
+      account: TEST_ACCOUNTS['gwalior.relief.ngo@gmail.com'],
+    },
+    {
+      role: 'donor',
+      title: 'Gwalior Heritage Palace Catering [Gwalior Palace - Donor]',
+      email: 'gwalior.palace.donor@gmail.com',
+      password: '1234',
+      badge: 'Gwalior Lashkar Banquets',
+      badgeColor: '#1b7a43',
+      desc: 'Heritage hotel banquet surplus (Shahi Paneer, Pulao) with hot-hold probe monitoring.',
+      icon: <Utensils size={20} color="#1b7a43" />,
+      account: TEST_ACCOUNTS['gwalior.palace.donor@gmail.com'],
+    },
+    {
+      role: 'donor',
+      title: 'Gwalior Central Banquets & Sweets [Gwalior Banquets - Donor]',
+      email: 'gwalior.banquets.donor@gmail.com',
+      password: '1234',
+      badge: 'Gwalior Station Banquets',
+      badgeColor: '#1b7a43',
+      desc: 'Padav convention hall & confectionery surplus with chilled holding facilities.',
+      icon: <Utensils size={20} color="#1b7a43" />,
+      account: TEST_ACCOUNTS['gwalior.banquets.donor@gmail.com'],
+    },
+    {
+      role: 'volunteer',
+      title: 'Gwalior Rapid Courier Vikram [Gwalior Vikram - Volunteer]',
+      email: 'gwalior.volunteer@gmail.com',
+      password: '1234',
+      badge: 'Gwalior Phoolbagh Courier',
+      badgeColor: '#b25e00',
+      desc: '2-Opt TSP dispatch rider covering Lashkar, City Center, and Morar Gwalior.',
+      icon: <Truck size={20} color="#b25e00" />,
+      account: TEST_ACCOUNTS['gwalior.volunteer@gmail.com'],
+    },
+
+    // ── Bangalore Regional Accounts ──
+    {
+      role: 'admin',
+      title: 'FoodBridge Central Admin [System Administrator - Admin]',
+      email: 'admin@gmail.com',
+      password: '1234',
+      badge: 'Platform Ops',
+      badgeColor: '#5856d6',
+      desc: 'System telemetry, partner verification approvals, and match escalations.',
+      icon: <Shield size={20} color="#5856d6" />,
+      account: TEST_ACCOUNTS['admin@gmail.com'],
+    },
     {
       role: 'ngo',
       title: 'Robin Hood Army Bangalore [Robin Hood Army - NGO]',
@@ -90,8 +171,6 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       icon: <HeartHandshake size={20} color="#0071e3" />,
       account: TEST_ACCOUNTS['hasiru@feeding.org'],
     },
-
-    // ── Donors ──
     {
       role: 'donor',
       title: 'Taj Palace Luxury Catering [Taj Palace - Donor]',
@@ -125,8 +204,6 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       icon: <Utensils size={20} color="#1b7a43" />,
       account: TEST_ACCOUNTS['itc@gardenia.com'],
     },
-
-    // ── Volunteers ──
     {
       role: 'volunteer',
       title: 'Arun Kumar Courier [Arun Kumar - Volunteer]',
@@ -148,19 +225,6 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       desc: 'Refrigerated van courier handling chilled bakery & dairy rescues.',
       icon: <Truck size={20} color="#b25e00" />,
       account: TEST_ACCOUNTS['priya@courier.org'],
-    },
-
-    // ── Administrator ──
-    {
-      role: 'admin',
-      title: 'FoodBridge Central Admin [System Administrator - Admin]',
-      email: 'admin@gmail.com',
-      password: '1234',
-      badge: 'Platform Ops',
-      badgeColor: '#5856d6',
-      desc: 'System telemetry, partner verification approvals, and match escalations.',
-      icon: <Shield size={20} color="#5856d6" />,
-      account: TEST_ACCOUNTS['admin@gmail.com'],
     },
   ];
 
@@ -813,17 +877,113 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
 
         {/* Right Side: Complete List of All Accounts Across All Roles with Bracket Names */}
         <div>
-          <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              1-Click Verified Accounts (Password: 1234)
-            </span>
-            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-              Click any to sign in directly
-            </span>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                1-Click Verified Accounts (Password: 1234)
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                Click any to sign in directly
+              </span>
+            </div>
+
+            {/* City Selector Tabs & Quick Search */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setCityFilter('all')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '100px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  border: cityFilter === 'all' ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                  background: cityFilter === 'all' ? 'rgba(27,122,67,0.1)' : 'transparent',
+                  color: cityFilter === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                All Regions ({testAccountsList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCityFilter('gwalior')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '100px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  border: cityFilter === 'gwalior' ? '1.5px solid #5856d6' : '1px solid var(--border-subtle)',
+                  background: cityFilter === 'gwalior' ? 'rgba(88,86,214,0.1)' : 'transparent',
+                  color: cityFilter === 'gwalior' ? '#5856d6' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <span>🏛️ Gwalior</span>
+                <span style={{ background: '#5856d6', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '10px' }}>6</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCityFilter('bangalore')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '100px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  border: cityFilter === 'bangalore' ? '1.5px solid #0071e3' : '1px solid var(--border-subtle)',
+                  background: cityFilter === 'bangalore' ? 'rgba(0,113,227,0.1)' : 'transparent',
+                  color: cityFilter === 'bangalore' ? '#0071e3' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <span>🏢 Bangalore</span>
+                <span style={{ background: '#0071e3', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '10px' }}>9</span>
+              </button>
+
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search 'gwalior' or role..."
+                style={{
+                  flex: 1,
+                  minWidth: '130px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                }}
+              />
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {testAccountsList.map((acc) => {
+            {testAccountsList
+              .filter((acc) => {
+                const isGwalior = acc.title.toLowerCase().includes('gwalior') || acc.email.toLowerCase().includes('gwalior');
+                if (cityFilter === 'gwalior' && !isGwalior) return false;
+                if (cityFilter === 'bangalore' && isGwalior) return false;
+                if (searchQuery.trim()) {
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    acc.title.toLowerCase().includes(q) ||
+                    acc.email.toLowerCase().includes(q) ||
+                    acc.badge.toLowerCase().includes(q) ||
+                    acc.desc.toLowerCase().includes(q)
+                  );
+                }
+                return true;
+              })
+              .map((acc) => {
               const isSelected = email === acc.email;
               return (
                 <div

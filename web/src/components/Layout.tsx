@@ -267,20 +267,26 @@ export const Layout: React.FC<LayoutProps> = ({
                   }}
                 >
                   <optgroup label="── NGOs / Food Banks ──">
+                    <option value="gwalior.annapurna.ngo@gmail.com">gwalior.annapurna.ngo@gmail.com [Gwalior Annapurna - NGO]</option>
+                    <option value="gwalior.relief.ngo@gmail.com">gwalior.relief.ngo@gmail.com [Gwalior Relief - NGO]</option>
                     <option value="ngo@gmail.com">ngo@gmail.com [Robin Hood Army - NGO]</option>
                     <option value="kitchen@koramangala.org">kitchen@koramangala.org [Koramangala Kitchen - NGO]</option>
                     <option value="hasiru@feeding.org">hasiru@feeding.org [Hasiru Dala - NGO]</option>
                   </optgroup>
                   <optgroup label="── Donors / Caterers ──">
+                    <option value="gwalior.palace.donor@gmail.com">gwalior.palace.donor@gmail.com [Gwalior Palace - Donor]</option>
+                    <option value="gwalior.banquets.donor@gmail.com">gwalior.banquets.donor@gmail.com [Gwalior Banquets - Donor]</option>
                     <option value="donor@gmail.com">donor@gmail.com [Taj Palace - Donor]</option>
                     <option value="grand@banquets.com">grand@banquets.com [Grand Banquets - Donor]</option>
                     <option value="itc@gardenia.com">itc@gardenia.com [ITC Gardenia - Donor]</option>
                   </optgroup>
                   <optgroup label="── Volunteer Couriers ──">
+                    <option value="gwalior.volunteer@gmail.com">gwalior.volunteer@gmail.com [Gwalior Vikram - Volunteer]</option>
                     <option value="volunteer@gmail.com">volunteer@gmail.com [Arun Kumar - Volunteer]</option>
                     <option value="priya@courier.org">priya@courier.org [Priya Sharma - Volunteer]</option>
                   </optgroup>
                   <optgroup label="── System Administration ──">
+                    <option value="gwalior.admin@gmail.com">gwalior.admin@gmail.com [Gwalior Admin - Admin]</option>
                     <option value="admin@gmail.com">admin@gmail.com [System Administrator - Admin]</option>
                   </optgroup>
                 </select>

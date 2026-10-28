@@ -35,13 +35,25 @@ export const PostSurplus: React.FC<PostSurplusProps> = ({ user, onSuccess, onCan
   const [portions, setPortions] = useState(60);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
 
+  // Auto-detect Gwalior donor location
+  const isGwaliorDonor =
+    user.name?.toLowerCase().includes('gwalior') ||
+    user.email?.toLowerCase().includes('gwalior') ||
+    user.organization?.toLowerCase().includes('gwalior');
+
   // Location state
-  const [placeName, setPlaceName] = useState('Palace Grounds, MG Road, Bengaluru');
-  const [latitude, setLatitude] = useState(12.9716);
-  const [longitude, setLongitude] = useState(77.5946);
+  const [placeName, setPlaceName] = useState(
+    isGwaliorDonor
+      ? 'Jayaji Chowk, Lashkar, Gwalior, Madhya Pradesh'
+      : 'Palace Grounds, MG Road, Bengaluru'
+  );
+  const [latitude, setLatitude] = useState(isGwaliorDonor ? 26.2045 : 12.9716);
+  const [longitude, setLongitude] = useState(isGwaliorDonor ? 78.1560 : 77.5946);
   const [locating, setLocating] = useState(false);
-  const [locationSuccess, setLocationSuccess] = useState(false);
-  const [locationStatusText, setLocationStatusText] = useState<string | null>(null);
+  const [locationSuccess, setLocationSuccess] = useState(isGwaliorDonor);
+  const [locationStatusText, setLocationStatusText] = useState<string | null>(
+    isGwaliorDonor ? 'Auto-set to Gwalior Operating Area' : null
+  );
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // Gemini AI Analysis state

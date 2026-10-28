@@ -28,8 +28,73 @@ class PartnerApplicationRequest(BaseModel):
 # Default pre-seeded verification requests if database collection is empty
 INITIAL_VERIFICATIONS = [
     {
+        "id": "req_gwl_01",
+        "name": "Gwalior Heritage Palace Catering",
+        "email": "gwalior.palace.donor@gmail.com",
+        "type": "donor",
+        "fssai_license": "10423001000542",
+        "address": "Jayaji Chowk, Lashkar, Gwalior, MP",
+        "phone": "+91 98765 77005",
+        "password": "1234",
+        "status": "verified",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
+        "id": "req_gwl_02",
+        "name": "Gwalior Annapurna Food Bank",
+        "email": "gwalior.annapurna.ngo@gmail.com",
+        "type": "ngo",
+        "fssai_license": "NGO-MP-474011",
+        "address": "Patel Nagar, City Center, Gwalior, MP",
+        "phone": "+91 98765 77002",
+        "password": "1234",
+        "status": "verified",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
+        "id": "req_gwl_03",
+        "name": "Gwalior Robin Hood Relief",
+        "email": "gwalior.relief.ngo@gmail.com",
+        "type": "ngo",
+        "fssai_license": "NGO-MP-474006",
+        "address": "Mall Road, Morar Cantt, Gwalior, MP",
+        "phone": "+91 98765 77003",
+        "password": "1234",
+        "status": "verified",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
+        "id": "req_gwl_04",
+        "name": "Gwalior Central Banquets & Sweets",
+        "email": "gwalior.banquets.donor@gmail.com",
+        "type": "donor",
+        "fssai_license": "10423001000889",
+        "address": "Station Road, Padav, Gwalior, MP",
+        "phone": "+91 98765 77006",
+        "password": "1234",
+        "status": "verified",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
+        "id": "req_gwl_05",
+        "name": "Gwalior Chambal Rasoi Seva Trust",
+        "email": "chambal.rasoi.gwalior@gmail.com",
+        "type": "ngo",
+        "fssai_license": "NGO-MP-474015",
+        "address": "Mayur Nagar, Thatipur, Gwalior, MP",
+        "phone": "+91 98765 77010",
+        "password": "1234",
+        "status": "pending",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
         "id": "req_01",
         "name": "ITC Gardenia Banquets",
+        "email": "itc@gardenia.com",
         "type": "donor",
         "fssai_license": "11223344556677",
         "address": "Residency Road, Bangalore",
@@ -39,6 +104,7 @@ INITIAL_VERIFICATIONS = [
     {
         "id": "req_02",
         "name": "Hasiru Dala Feeding Centre",
+        "email": "hasiru@feeding.org",
         "type": "ngo",
         "fssai_license": "NGO-8829-KA",
         "address": "KR Market, Bangalore",
@@ -48,6 +114,7 @@ INITIAL_VERIFICATIONS = [
     {
         "id": "req_03",
         "name": "Marriott Convention Center",
+        "email": "marriott@whitefield.com",
         "type": "donor",
         "fssai_license": "11899223344551",
         "address": "Whitefield, Bangalore",
@@ -57,6 +124,14 @@ INITIAL_VERIFICATIONS = [
 ]
 
 INITIAL_ESCALATIONS = [
+    {
+        "id": "esc_gwl_1",
+        "listing_id": "list_gwalior_wedding_feast",
+        "donor": "Gwalior Heritage Palace Catering",
+        "reason": "Gwalior surplus volume alert: 45kg wedding banquet matched with high priority.",
+        "timestamp": "4m ago",
+        "resolved": False,
+    },
     {
         "id": "esc_101",
         "listing_id": "list_wedding_rush_3",
@@ -78,13 +153,15 @@ INITIAL_ESCALATIONS = [
 
 def _ensure_initial_admin_data():
     existing_ver = db.query_collection(VERIFICATIONS_COLLECTION)
-    if not existing_ver:
-        for v in INITIAL_VERIFICATIONS:
+    existing_ids = {v["id"] for v in existing_ver}
+    for v in INITIAL_VERIFICATIONS:
+        if v["id"] not in existing_ids:
             db.set_document(VERIFICATIONS_COLLECTION, v["id"], v)
 
     existing_esc = db.query_collection(ESCALATIONS_COLLECTION)
-    if not existing_esc:
-        for e in INITIAL_ESCALATIONS:
+    existing_esc_ids = {e["id"] for e in existing_esc}
+    for e in INITIAL_ESCALATIONS:
+        if e["id"] not in existing_esc_ids:
             db.set_document(ESCALATIONS_COLLECTION, e["id"], e)
 
 

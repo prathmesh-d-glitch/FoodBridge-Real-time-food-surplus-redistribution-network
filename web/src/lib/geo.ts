@@ -30,8 +30,52 @@ export function haversineDistance(
 }
 
 export const BANGALORE_CENTER: [number, number] = [12.9716, 77.5946];
+export const GWALIOR_CENTER: [number, number] = [26.2183, 78.1828];
 
 export const PRESET_LOCATIONS: Record<string, LocationResult> = {
+  // ── Gwalior Presets ──
+  gwalior_lashkar: {
+    latitude: 26.2045,
+    longitude: 78.1560,
+    placeName: 'Jayaji Chowk, Lashkar, Gwalior',
+    formattedAddress: 'Jayaji Chowk, Lashkar, Gwalior, Madhya Pradesh 474001, India',
+    city: 'Gwalior',
+    suburb: 'Lashkar',
+    state: 'Madhya Pradesh',
+    source: 'preset',
+  },
+  gwalior_city_center: {
+    latitude: 26.2124,
+    longitude: 78.1772,
+    placeName: 'City Center, Gwalior',
+    formattedAddress: 'Patel Nagar, City Center, Gwalior, Madhya Pradesh 474011, India',
+    city: 'Gwalior',
+    suburb: 'City Center',
+    state: 'Madhya Pradesh',
+    source: 'preset',
+  },
+  gwalior_morar: {
+    latitude: 26.2289,
+    longitude: 78.2254,
+    placeName: 'Morar Cantt, Gwalior',
+    formattedAddress: 'Mall Road, Morar, Gwalior, Madhya Pradesh 474006, India',
+    city: 'Gwalior',
+    suburb: 'Morar',
+    state: 'Madhya Pradesh',
+    source: 'preset',
+  },
+  gwalior_station: {
+    latitude: 26.2198,
+    longitude: 78.1820,
+    placeName: 'Railway Station Road, Padav, Gwalior',
+    formattedAddress: 'Station Road, Padav, Gwalior, Madhya Pradesh 474002, India',
+    city: 'Gwalior',
+    suburb: 'Padav',
+    state: 'Madhya Pradesh',
+    source: 'preset',
+  },
+
+  // ── Bangalore Presets ──
   mg_road: {
     latitude: 12.9716,
     longitude: 77.5946,

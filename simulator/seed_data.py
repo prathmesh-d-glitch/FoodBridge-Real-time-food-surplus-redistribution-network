@@ -50,6 +50,26 @@ def seed_database():
             verification_status=VerificationStatus.VERIFIED,
             fssai_license="11229988776655",
         ),
+        UserProfile(
+            uid="donor_gwalior_palace",
+            email="gwalior.palace.donor@gmail.com",
+            name="Gwalior Heritage Palace Catering",
+            role=UserRole.DONOR,
+            phone="+919876577005",
+            location=GeoPoint(latitude=26.2045, longitude=78.1560, address="Jayaji Chowk, Lashkar, Gwalior, MP"),
+            verification_status=VerificationStatus.VERIFIED,
+            fssai_license="10423001000542",
+        ),
+        UserProfile(
+            uid="donor_gwalior_banquets",
+            email="gwalior.banquets.donor@gmail.com",
+            name="Gwalior Central Banquets & Sweets",
+            role=UserRole.DONOR,
+            phone="+919876577006",
+            location=GeoPoint(latitude=26.2198, longitude=78.1820, address="Station Road, Padav, Gwalior, MP"),
+            verification_status=VerificationStatus.VERIFIED,
+            fssai_license="10423001000889",
+        ),
     ]
 
     for d in donors:
@@ -81,12 +101,36 @@ def seed_database():
             dietary_preferences=[DietaryType.VEG],
             reliability_score=0.91,
         ),
+        UserProfile(
+            uid="ngo_gwalior_annapurna",
+            email="gwalior.annapurna.ngo@gmail.com",
+            name="Gwalior Annapurna Food Bank",
+            role=UserRole.NGO,
+            phone="+919876577002",
+            location=GeoPoint(latitude=26.2124, longitude=78.1772, address="Patel Nagar, City Center, Gwalior, MP"),
+            verification_status=VerificationStatus.VERIFIED,
+            capacity_kg=300.0,
+            dietary_preferences=[DietaryType.VEG],
+            reliability_score=0.97,
+        ),
+        UserProfile(
+            uid="ngo_gwalior_relief",
+            email="gwalior.relief.ngo@gmail.com",
+            name="Gwalior Robin Hood Relief",
+            role=UserRole.NGO,
+            phone="+919876577003",
+            location=GeoPoint(latitude=26.2289, longitude=78.2254, address="Mall Road, Morar Cantt, Gwalior, MP"),
+            verification_status=VerificationStatus.VERIFIED,
+            capacity_kg=220.0,
+            dietary_preferences=[DietaryType.VEG, DietaryType.NON_VEG],
+            reliability_score=0.94,
+        ),
     ]
 
     for ngo in ngos:
         db.set_document("users", ngo.uid, ngo.model_dump(mode="json"))
 
-    # 3. Volunteers
+    # 3. Volunteers & Admins
     volunteers = [
         UserProfile(
             uid="vol_arun_kumar",
@@ -95,6 +139,24 @@ def seed_database():
             role=UserRole.VOLUNTEER,
             phone="+919876543212",
             location=GeoPoint(latitude=12.9700, longitude=77.5900, address="Cubbon Park Area"),
+            verification_status=VerificationStatus.VERIFIED,
+        ),
+        UserProfile(
+            uid="vol_gwalior_vikram",
+            email="gwalior.volunteer@gmail.com",
+            name="Gwalior Rapid Courier Vikram",
+            role=UserRole.VOLUNTEER,
+            phone="+919876577004",
+            location=GeoPoint(latitude=26.2167, longitude=78.1695, address="Phoolbagh Chowk, Lashkar, Gwalior, MP"),
+            verification_status=VerificationStatus.VERIFIED,
+        ),
+        UserProfile(
+            uid="admin_gwalior",
+            email="gwalior.admin@gmail.com",
+            name="FoodBridge Gwalior Regional Admin",
+            role=UserRole.ADMIN,
+            phone="+919876577001",
+            location=GeoPoint(latitude=26.2235, longitude=78.1792, address="Collectorate Road, City Center, Gwalior, MP"),
             verification_status=VerificationStatus.VERIFIED,
         ),
     ]
@@ -158,6 +220,60 @@ def seed_database():
             "created_at": (now - timedelta(hours=2)).isoformat(),
             "updated_at": (now - timedelta(hours=2)).isoformat(),
         },
+        {
+            "id": "list_gwalior_wedding_feast",
+            "donor_id": "donor_gwalior_palace",
+            "donor_name": "Gwalior Heritage Palace Catering",
+            "title": "Gwalior Royal Feast: Shahi Paneer, Dal Makhani & Jeera Rice",
+            "description": "Grand wedding banquet surplus from Lashkar Gwalior. Maintained in insulated hot holding vessels at 67°C.",
+            "category": FoodCategory.COOKED_MEALS.value,
+            "storage_condition": StorageCondition.HOT_HOLD.value,
+            "dietary_type": DietaryType.VEG.value,
+            "quantity_kg": 45.0,
+            "portions": 130,
+            "prepared_at": (now - timedelta(minutes=30)).isoformat(),
+            "safe_until": (now + timedelta(hours=3, minutes=30)).isoformat(),
+            "location": {"latitude": 26.2045, "longitude": 78.1560, "address": "Jayaji Chowk, Lashkar, Gwalior, Madhya Pradesh"},
+            "geohash": "tu345x",
+            "photo_analysis": {
+                "food_type": "Royal Catering Feast",
+                "estimated_portions": 130,
+                "shelf_life_hours_hint": 4.0,
+                "safety_flags": ["Hot-hold 67°C verified", "Stainless steel containers"],
+                "confidence": 0.96,
+                "source": "gemini",
+            },
+            "status": ListingStatus.OFFERED.value,
+            "created_at": (now - timedelta(minutes=30)).isoformat(),
+            "updated_at": (now - timedelta(minutes=30)).isoformat(),
+        },
+        {
+            "id": "list_gwalior_sweets_buffet",
+            "donor_id": "donor_gwalior_banquets",
+            "donor_name": "Gwalior Central Banquets & Sweets",
+            "title": "Gwalior Delicacies: Morena Gajak, Besan Ladoo & Peda Boxes",
+            "description": "Banquet dessert surplus packed in food-grade sealed cartons at Padav Station Road Gwalior.",
+            "category": FoodCategory.DESSERTS.value,
+            "storage_condition": StorageCondition.AMBIENT.value,
+            "dietary_type": DietaryType.VEG.value,
+            "quantity_kg": 22.0,
+            "portions": 70,
+            "prepared_at": (now - timedelta(hours=1)).isoformat(),
+            "safe_until": (now + timedelta(hours=23)).isoformat(),
+            "location": {"latitude": 26.2198, "longitude": 78.1820, "address": "Station Road, Padav, Gwalior, Madhya Pradesh"},
+            "geohash": "tu347s",
+            "photo_analysis": {
+                "food_type": "Traditional Confectionery & Sweets",
+                "estimated_portions": 70,
+                "shelf_life_hours_hint": 24.0,
+                "safety_flags": ["Ambient dry storage", "Sealed packaging"],
+                "confidence": 0.94,
+                "source": "gemini",
+            },
+            "status": ListingStatus.AVAILABLE.value,
+            "created_at": (now - timedelta(hours=1)).isoformat(),
+            "updated_at": (now - timedelta(hours=1)).isoformat(),
+        },
     ]
 
     for l in listings:
@@ -188,6 +304,32 @@ def seed_database():
         "expires_at": (now + timedelta(minutes=9, seconds=30)).isoformat(),
     }
     db.set_document("offers", active_offer["id"], active_offer)
+
+    # 5b. Active offer for ngo_gwalior_annapurna (gwalior.annapurna.ngo@gmail.com)
+    active_offer_gwl = {
+        "id": "off_seed_gwalior_01",
+        "listing_id": "list_gwalior_wedding_feast",
+        "donor_id": "donor_gwalior_palace",
+        "ngo_id": "ngo_gwalior_annapurna",
+        "ngo_name": "Gwalior Annapurna Food Bank",
+        "rank": 1,
+        "score": 0.95,
+        "score_breakdown": {
+            "time_feasibility": 0.98,
+            "proximity": 0.94,
+            "capacity_fit": 0.96,
+            "dietary_match": 1.0,
+            "reliability": 0.97,
+            "need_urgency": 0.90,
+            "total_score": 0.95,
+            "explanation": "Exceptional spatial fit in Gwalior (2.1km) with 300kg capacity accommodating 45kg hot banquet.",
+        },
+        "status": OfferStatus.OFFERED.value,
+        "response_timeout_seconds": 600,
+        "offered_at": (now - timedelta(minutes=3)).isoformat(),
+        "expires_at": (now + timedelta(minutes=7)).isoformat(),
+    }
+    db.set_document("offers", active_offer_gwl["id"], active_offer_gwl)
 
     # 6. Active volunteer route for vol_arun_kumar (volunteer@gmail.com)
     volunteer_route = {
@@ -222,8 +364,91 @@ def seed_database():
     }
     db.set_document("routes", volunteer_route["id"], volunteer_route)
 
+    # 6b. Active volunteer route for vol_gwalior_vikram (gwalior.volunteer@gmail.com)
+    volunteer_route_gwl = {
+        "id": "rt_opt_gwl_01",
+        "volunteer_id": "vol_gwalior_vikram",
+        "volunteer_name": "Gwalior Rapid Courier Vikram",
+        "stops": [
+            {
+                "stop_id": "stop_gwl_p1",
+                "stop_type": "pickup",
+                "listing_id": "list_gwalior_wedding_feast",
+                "target_name": "Gwalior Heritage Palace Catering (Lashkar)",
+                "location": {"latitude": 26.2045, "longitude": 78.1560},
+                "estimated_arrival": (now + timedelta(minutes=10)).isoformat(),
+                "deadline": (now + timedelta(minutes=75)).isoformat(),
+                "completed": False,
+            },
+            {
+                "stop_id": "stop_gwl_d1",
+                "stop_type": "delivery",
+                "listing_id": "list_gwalior_wedding_feast",
+                "target_name": "Gwalior Annapurna Food Bank (City Center)",
+                "location": {"latitude": 26.2124, "longitude": 78.1772},
+                "estimated_arrival": (now + timedelta(minutes=28)).isoformat(),
+                "deadline": (now + timedelta(minutes=105)).isoformat(),
+                "completed": False,
+            },
+        ],
+        "total_distance_km": 3.2,
+        "estimated_duration_mins": 18.0,
+        "status": RouteStatus.ASSIGNED.value,
+    }
+    db.set_document("routes", volunteer_route_gwl["id"], volunteer_route_gwl)
+
     # 7. Verification requests
     verifications = [
+        {
+            "id": "req_gwl_01",
+            "name": "Gwalior Heritage Palace Catering",
+            "email": "gwalior.palace.donor@gmail.com",
+            "type": "donor",
+            "fssai_license": "10423001000542",
+            "address": "Jayaji Chowk, Lashkar, Gwalior, MP",
+            "status": "verified",
+            "submitted_at": (now - timedelta(days=2)).isoformat(),
+        },
+        {
+            "id": "req_gwl_02",
+            "name": "Gwalior Annapurna Food Bank",
+            "email": "gwalior.annapurna.ngo@gmail.com",
+            "type": "ngo",
+            "fssai_license": "NGO-MP-474011",
+            "address": "Patel Nagar, City Center, Gwalior, MP",
+            "status": "verified",
+            "submitted_at": (now - timedelta(days=3)).isoformat(),
+        },
+        {
+            "id": "req_gwl_03",
+            "name": "Gwalior Robin Hood Relief",
+            "email": "gwalior.relief.ngo@gmail.com",
+            "type": "ngo",
+            "fssai_license": "NGO-MP-474006",
+            "address": "Mall Road, Morar Cantt, Gwalior, MP",
+            "status": "verified",
+            "submitted_at": (now - timedelta(days=4)).isoformat(),
+        },
+        {
+            "id": "req_gwl_04",
+            "name": "Gwalior Central Banquets & Sweets",
+            "email": "gwalior.banquets.donor@gmail.com",
+            "type": "donor",
+            "fssai_license": "10423001000889",
+            "address": "Station Road, Padav, Gwalior, MP",
+            "status": "verified",
+            "submitted_at": (now - timedelta(days=1)).isoformat(),
+        },
+        {
+            "id": "req_gwl_05",
+            "name": "Gwalior Chambal Rasoi Seva Trust",
+            "email": "chambal.rasoi.gwalior@gmail.com",
+            "type": "ngo",
+            "fssai_license": "NGO-MP-474015",
+            "address": "Mayur Nagar, Thatipur, Gwalior, MP",
+            "status": "pending",
+            "submitted_at": (now - timedelta(hours=1)).isoformat(),
+        },
         {
             "id": "req_01",
             "name": "ITC Gardenia Banquets",

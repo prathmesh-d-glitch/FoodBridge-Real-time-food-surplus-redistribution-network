@@ -16,6 +16,7 @@ import {
   formatCoordinates,
   LocationResult,
   BANGALORE_CENTER,
+  GWALIOR_CENTER,
 } from '../lib/geo';
 
 export const LiveMapPage: React.FC = () => {
@@ -23,7 +24,8 @@ export const LiveMapPage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
   const [userLocation, setUserLocation] = useState<LocationResult | null>(null);
   const [locating, setLocating] = useState(false);
-  const [mapCenter, setMapCenter] = useState<[number, number]>(BANGALORE_CENTER);
+  const [activeCity, setActiveCity] = useState<'bangalore' | 'gwalior'>('gwalior');
+  const [mapCenter, setMapCenter] = useState<[number, number]>(GWALIOR_CENTER);
   const [locMessage, setLocMessage] = useState<string | null>(null);
 
   const filteredListings = listings.filter((l) => {
@@ -139,6 +141,32 @@ export const LiveMapPage: React.FC = () => {
               </>
             )}
           </button>
+
+          {/* City Jump Selector */}
+          <div className="segmented-nav" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+            <button
+              type="button"
+              className={`segmented-nav-btn ${activeCity === 'gwalior' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveCity('gwalior');
+                setMapCenter(GWALIOR_CENTER);
+              }}
+              style={{ fontWeight: 600, color: activeCity === 'gwalior' ? '#5856d6' : undefined }}
+            >
+              🏛️ Gwalior (MP)
+            </button>
+            <button
+              type="button"
+              className={`segmented-nav-btn ${activeCity === 'bangalore' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveCity('bangalore');
+                setMapCenter(BANGALORE_CENTER);
+              }}
+              style={{ fontWeight: 600, color: activeCity === 'bangalore' ? '#0071e3' : undefined }}
+            >
+              🏢 Bangalore (KA)
+            </button>
+          </div>
 
           <div className="segmented-nav">
             <button

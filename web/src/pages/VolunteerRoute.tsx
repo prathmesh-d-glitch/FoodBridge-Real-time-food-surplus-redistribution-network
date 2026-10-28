@@ -39,37 +39,69 @@ export const VolunteerRoutePage: React.FC<VolunteerRouteProps> = ({ user }) => {
 
       let loadedRoutes = data;
       if (loadedRoutes.length === 0) {
+        const isGwalior = user.name.toLowerCase().includes('gwalior') || user.email.toLowerCase().includes('gwalior');
         // Mock active route if none exists so examiners can test immediately
-        const mockRoute: RouteType = {
-          id: 'rt_opt_blr_01',
-          volunteer_id: user.uid,
-          volunteer_name: user.name,
-          stops: [
-            {
-              stop_id: 'stop_p1',
-              stop_type: 'pickup',
-              listing_id: 'list_demo_1',
-              target_name: 'Taj Palace Luxury Catering',
-              location: { latitude: 12.9716, longitude: 77.5946 },
-              estimated_arrival: new Date(Date.now() + 15 * 60000).toISOString(),
-              deadline: new Date(Date.now() + 90 * 60000).toISOString(),
-              completed: false,
-            },
-            {
-              stop_id: 'stop_d1',
-              stop_type: 'delivery',
-              listing_id: 'list_demo_1',
-              target_name: 'Robin Hood Army Indiranagar',
-              location: { latitude: 12.9784, longitude: 77.6408 },
-              estimated_arrival: new Date(Date.now() + 45 * 60000).toISOString(),
-              deadline: new Date(Date.now() + 120 * 60000).toISOString(),
-              completed: false,
-            },
-          ],
-          total_distance_km: 6.8,
-          estimated_duration_mins: 45.0,
-          status: 'assigned',
-        };
+        const mockRoute: RouteType = isGwalior
+          ? {
+              id: 'rt_opt_gwl_01',
+              volunteer_id: user.uid,
+              volunteer_name: user.name,
+              stops: [
+                {
+                  stop_id: 'stop_gwl_p1',
+                  stop_type: 'pickup',
+                  listing_id: 'list_gwalior_wedding_feast',
+                  target_name: 'Gwalior Heritage Palace Catering (Lashkar)',
+                  location: { latitude: 26.2045, longitude: 78.1560 },
+                  estimated_arrival: new Date(Date.now() + 10 * 60000).toISOString(),
+                  deadline: new Date(Date.now() + 75 * 60000).toISOString(),
+                  completed: false,
+                },
+                {
+                  stop_id: 'stop_gwl_d1',
+                  stop_type: 'delivery',
+                  listing_id: 'list_gwalior_wedding_feast',
+                  target_name: 'Gwalior Annapurna Food Bank (City Center)',
+                  location: { latitude: 26.2124, longitude: 78.1772 },
+                  estimated_arrival: new Date(Date.now() + 28 * 60000).toISOString(),
+                  deadline: new Date(Date.now() + 105 * 60000).toISOString(),
+                  completed: false,
+                },
+              ],
+              total_distance_km: 3.2,
+              estimated_duration_mins: 18.0,
+              status: 'assigned',
+            }
+          : {
+              id: 'rt_opt_blr_01',
+              volunteer_id: user.uid,
+              volunteer_name: user.name,
+              stops: [
+                {
+                  stop_id: 'stop_p1',
+                  stop_type: 'pickup',
+                  listing_id: 'list_demo_1',
+                  target_name: 'Taj Palace Luxury Catering',
+                  location: { latitude: 12.9716, longitude: 77.5946 },
+                  estimated_arrival: new Date(Date.now() + 15 * 60000).toISOString(),
+                  deadline: new Date(Date.now() + 90 * 60000).toISOString(),
+                  completed: false,
+                },
+                {
+                  stop_id: 'stop_d1',
+                  stop_type: 'delivery',
+                  listing_id: 'list_demo_1',
+                  target_name: 'Robin Hood Army Indiranagar',
+                  location: { latitude: 12.9784, longitude: 77.6408 },
+                  estimated_arrival: new Date(Date.now() + 45 * 60000).toISOString(),
+                  deadline: new Date(Date.now() + 120 * 60000).toISOString(),
+                  completed: false,
+                },
+              ],
+              total_distance_km: 6.8,
+              estimated_duration_mins: 45.0,
+              status: 'assigned',
+            };
         loadedRoutes = [mockRoute];
       }
 
