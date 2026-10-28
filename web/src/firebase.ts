@@ -134,13 +134,17 @@ export const authenticateUser = (email: string, password: string): UserSession =
   if (!account) {
     try {
       const dynamicPartners = JSON.parse(localStorage.getItem('foodbridge_registered_partners') || '{}');
+      const adminVers = JSON.parse(localStorage.getItem('foodbridge_admin_verifications') || '[]');
+
       if (dynamicPartners[normalizedEmail]) {
         const dp = dynamicPartners[normalizedEmail];
         
         // Check if Admin has approved their verification
-        const adminVers = JSON.parse(localStorage.getItem('foodbridge_admin_verifications') || '[]');
-        const verRecord = adminVers.find((v: any) => v.email === normalizedEmail || v.name === dp.name);
-        const isApproved = verRecord?.status === 'verified';
+        const verRecord = adminVers.find((v: any) => 
+          (v.email && v.email.toLowerCase() === normalizedEmail) || 
+          (v.name && dp.name && v.name.toLowerCase() === dp.name.toLowerCase())
+        );
+        const isApproved = dp.status === 'verified' || verRecord?.status === 'verified';
 
         if (!isApproved) {
           throw new Error(
@@ -153,12 +157,34 @@ export const authenticateUser = (email: string, password: string): UserSession =
           uid: dp.uid || `user_${Date.now()}`,
           name: `${dp.name} [${dp.name} - ${dp.type.toUpperCase()}]`,
           email: normalizedEmail,
-          password: dp.password || '1234',
+          password: dp.password || verRecord?.password || '1234',
           role: dp.type as any,
           token: `mock:${dp.type}:${dp.uid || 'dynamic_user'}:${dp.name}`,
           organization: dp.name,
           phone: dp.phone || '+91 98765 00000',
         };
+      } else {
+        // Fallback: Check if this user exists in admin verifications list directly
+        const verRecord = adminVers.find((v: any) => v.email && v.email.toLowerCase() === normalizedEmail);
+        if (verRecord) {
+          if (verRecord.status !== 'verified') {
+            throw new Error(
+              `Account '${verRecord.name}' is currently PENDING Admin Verification. ` +
+              `Please log in as Admin (admin@gmail.com) -> Admin Console -> click 'Approve' to activate this partner.`
+            );
+          }
+
+          account = {
+            uid: verRecord.id || `user_${Date.now()}`,
+            name: `${verRecord.name} [${verRecord.name} - ${(verRecord.type || 'donor').toUpperCase()}]`,
+            email: normalizedEmail,
+            password: verRecord.password || '1234',
+            role: (verRecord.type || 'donor') as any,
+            token: `mock:${verRecord.type || 'donor'}:${verRecord.id || 'dynamic_user'}:${verRecord.name}`,
+            organization: verRecord.name,
+            phone: verRecord.phone || '+91 98765 00000',
+          };
+        }
       }
     } catch (e: any) {
       if (e.message && e.message.includes('PENDING Admin Verification')) {
@@ -179,12 +205,16 @@ export const authenticateUser = (email: string, password: string): UserSession =
       `• volunteer@gmail.com [Arun Kumar - Volunteer]\n` +
       `• priya@courier.org [Priya Sharma - Volunteer]\n` +
       `• admin@gmail.com [System Administrator - Admin]\n` +
-      `Password for all test accounts is '1234'.`
+      `Or apply as a new Partner using the tab above.`
     );
   }
 
   if (account.password !== password) {
-    throw new Error("Invalid password. Test password for all accounts is '1234'.");
+    if (account.password === '1234') {
+      throw new Error("Invalid password. Test password for pre-configured accounts is '1234'.");
+    } else {
+      throw new Error(`Invalid password for '${email}'. Please enter your registered account password.`);
+    }
   }
 
   const session: UserSession = {

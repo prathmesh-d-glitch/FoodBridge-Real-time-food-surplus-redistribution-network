@@ -45,6 +45,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('1234');
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [regType, setRegType] = useState<'donor' | 'ngo'>('donor');
   const [regLicense, setRegLicense] = useState('');
   const [regAddress, setRegAddress] = useState('');
@@ -163,12 +164,85 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const syncPartnerVerification = async (userEmail: string) => {
+    const norm = userEmail.trim().toLowerCase();
+    try {
+      const res = await api.checkPartnerStatus(norm);
+      if (res && res.found) {
+        // Cache in foodbridge_admin_verifications
+        const cachedVers = JSON.parse(localStorage.getItem('foodbridge_admin_verifications') || '[]');
+        const existingIdx = cachedVers.findIndex((v: any) => v.email && v.email.toLowerCase() === norm);
+        const entry = {
+          id: res.id || `req_${Date.now()}`,
+          name: res.name,
+          email: res.email,
+          type: res.type,
+          fssai_license: res.fssai_license,
+          address: res.address,
+          phone: res.phone,
+          password: res.password || '1234',
+          status: res.status,
+          submitted_at: res.submitted_at,
+          verified_at: res.verified_at,
+        };
+        if (existingIdx >= 0) {
+          cachedVers[existingIdx] = entry;
+        } else {
+          cachedVers.unshift(entry);
+        }
+        localStorage.setItem('foodbridge_admin_verifications', JSON.stringify(cachedVers));
+
+        // Cache in foodbridge_registered_partners
+        const partners = JSON.parse(localStorage.getItem('foodbridge_registered_partners') || '{}');
+        partners[norm] = {
+          ...entry,
+          uid: `${res.type}_${Date.now()}`,
+        };
+        localStorage.setItem('foodbridge_registered_partners', JSON.stringify(partners));
+        return;
+      }
+
+      // Fallback: query all verifications from GET /admin/verifications
+      const vers = await api.getVerifications();
+      const found = vers.find((v: any) => v.email && v.email.toLowerCase() === norm);
+      if (found) {
+        const cachedVers = JSON.parse(localStorage.getItem('foodbridge_admin_verifications') || '[]');
+        const existingIdx = cachedVers.findIndex((v: any) => v.email && v.email.toLowerCase() === norm);
+        if (existingIdx >= 0) {
+          cachedVers[existingIdx] = found;
+        } else {
+          cachedVers.unshift(found);
+        }
+        localStorage.setItem('foodbridge_admin_verifications', JSON.stringify(cachedVers));
+
+        const partners = JSON.parse(localStorage.getItem('foodbridge_registered_partners') || '{}');
+        partners[norm] = {
+          ...(partners[norm] || {}),
+          name: found.name,
+          email: found.email,
+          type: found.type,
+          status: found.status,
+          fssai_license: found.fssai_license,
+          address: found.address,
+          phone: found.phone || '+91 98765 00000',
+          password: found.password || partners[norm]?.password || '1234',
+          uid: `${found.type}_${Date.now()}`,
+        };
+        localStorage.setItem('foodbridge_registered_partners', JSON.stringify(partners));
+      }
+    } catch {
+      // Offline fallback
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setLoading(true);
 
     try {
+      // Sync verification approval from backend before authenticating
+      await syncPartnerVerification(email);
       const session = login(email, password);
       onSuccess(session);
     } catch (err: any) {
@@ -238,8 +312,9 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
         `Sign in as Admin (admin@gmail.com) -> Admin Console -> click 'Approve' to activate this partner.`
       );
 
-      // Pre-fill sign in form with the new email
+      // Pre-fill sign in form with the new email and password
       setEmail(normEmail);
+      setPassword(regPassword || '1234');
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to submit partner application.');
     } finally {
@@ -608,6 +683,43 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
                     className="input-field"
                     style={{ fontSize: '12.5px', padding: '8px 10px' }}
                   />
+                </div>
+
+                {/* Account Password */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Account Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="Choose a password (e.g. 1234)"
+                      className="input-field"
+                      style={{ fontSize: '12.5px', padding: '8px 36px 8px 10px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-tertiary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      title={showRegPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showRegPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
                 </div>
 
                 {/* FSSAI or NGO License */}

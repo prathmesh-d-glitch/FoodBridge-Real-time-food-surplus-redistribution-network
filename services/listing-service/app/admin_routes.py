@@ -92,6 +92,7 @@ def _ensure_initial_admin_data():
 def apply_for_verification(payload: PartnerApplicationRequest) -> Dict[str, Any]:
     """Allows a new donor or NGO to apply for verified partnership."""
     req_id = f"req_{uuid.uuid4().hex[:8]}"
+    pwd = payload.password if payload.password else "1234"
     doc = {
         "id": req_id,
         "name": payload.name,
@@ -100,6 +101,7 @@ def apply_for_verification(payload: PartnerApplicationRequest) -> Dict[str, Any]
         "fssai_license": payload.fssai_license,
         "address": payload.address,
         "phone": payload.phone,
+        "password": pwd,
         "status": "pending",
         "submitted_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -113,6 +115,7 @@ def apply_for_verification(payload: PartnerApplicationRequest) -> Dict[str, Any]
         "name": payload.name,
         "role": payload.type.strip().lower(),
         "phone": payload.phone,
+        "password": pwd,
         "verification_status": "pending",
         "fssai_license": payload.fssai_license,
     }
@@ -128,6 +131,46 @@ def get_verification_queue() -> List[Dict[str, Any]]:
     return db.query_collection(VERIFICATIONS_COLLECTION, order_by="-submitted_at")
 
 
+@router.get("/verifications/status/{email}")
+def get_partner_verification_status(email: str) -> Dict[str, Any]:
+    """Retrieves current verification and account status for a given email."""
+    norm_email = email.strip().lower()
+    vers = db.query_collection(VERIFICATIONS_COLLECTION, filters=[("email", "==", norm_email)])
+    if vers:
+        # Return the latest one
+        v = sorted(vers, key=lambda x: str(x.get("submitted_at", "")), reverse=True)[0]
+        return {
+            "found": True,
+            "status": v.get("status", "pending"),
+            "id": v.get("id"),
+            "name": v.get("name"),
+            "email": v.get("email"),
+            "type": v.get("type"),
+            "password": v.get("password", "1234"),
+            "phone": v.get("phone"),
+            "address": v.get("address"),
+            "fssai_license": v.get("fssai_license"),
+            "verified_at": v.get("verified_at"),
+        }
+
+    # Fallback to users collection
+    users = db.query_collection("users", filters=[("email", "==", norm_email)])
+    if users:
+        u = users[0]
+        return {
+            "found": True,
+            "status": u.get("verification_status", "verified"),
+            "name": u.get("name"),
+            "email": u.get("email"),
+            "type": u.get("role"),
+            "password": u.get("password", "1234"),
+            "phone": u.get("phone"),
+            "fssai_license": u.get("fssai_license"),
+        }
+
+    return {"found": False}
+
+
 @router.post("/verifications/{req_id}/approve")
 def approve_verification(req_id: str) -> Dict[str, Any]:
     """Approves a partner and updates verification status in database."""
@@ -138,7 +181,15 @@ def approve_verification(req_id: str) -> Dict[str, Any]:
     doc["status"] = "verified"
     doc["verified_at"] = datetime.now(timezone.utc).isoformat()
     db.set_document(VERIFICATIONS_COLLECTION, req_id, doc)
-    logger.info(f"Admin approved verification request {req_id}")
+
+    # Sync verification_status across users collection
+    if doc.get("email"):
+        users = db.query_collection("users", filters=[("email", "==", doc["email"])])
+        for u in users:
+            u["verification_status"] = "verified"
+            db.set_document("users", u["uid"], u)
+
+    logger.info(f"Admin approved verification request {req_id} ({doc.get('email')})")
     return doc
 
 
@@ -152,7 +203,14 @@ def reject_verification(req_id: str) -> Dict[str, Any]:
     doc["status"] = "rejected"
     doc["rejected_at"] = datetime.now(timezone.utc).isoformat()
     db.set_document(VERIFICATIONS_COLLECTION, req_id, doc)
-    logger.info(f"Admin rejected verification request {req_id}")
+
+    if doc.get("email"):
+        users = db.query_collection("users", filters=[("email", "==", doc["email"])])
+        for u in users:
+            u["verification_status"] = "rejected"
+            db.set_document("users", u["uid"], u)
+
+    logger.info(f"Admin rejected verification request {req_id} ({doc.get('email')})")
     return doc
 
 
